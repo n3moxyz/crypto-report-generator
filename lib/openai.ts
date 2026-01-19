@@ -16,6 +16,7 @@ export interface BulletPoint {
 
 export interface WhatsUpData {
   bullets: BulletPoint[];
+  conclusion: string;
   sentiment: "bullish" | "bearish" | "neutral";
   topMovers: {
     gainers: Array<{ symbol: string; change: string }>;
@@ -223,26 +224,36 @@ STRUCTURE: For each bullet:
    - Connect the dots between events and price action
    - Only include if you have ACTUAL reasons from the X/Twitter intel
 
-FORMAT: Return a JSON array of objects:
-[
-  {
-    "main": "Regulatory uncertainty weighing on sentiment despite positive institutional flows",
-    "subPoints": [
-      {"text": "Senate crypto bill postponed after Coinbase CEO criticism", "sourceUrl": "https://x.com/..."},
-      {"text": "Bitcoin ETF inflows of $1.2B signal continued institutional demand", "sourceUrl": "https://x.com/..."}
-    ]
-  },
-  {
-    "main": "Market-wide risk-off as macro headwinds intensify: BTC $93k (*-2.2%*), ETH $3.2k (*-3.3%*)",
-    "subPoints": [
-      {"text": "Fed minutes reveal hawkish tilt on rate cuts", "sourceUrl": "https://x.com/..."},
-      {"text": "Tariff escalation driving flight to safety"}
-    ]
-  },
-  {
-    "main": "Altcoin weakness accelerating with SOL leading losses at *-6.1%*"
-  }
-]
+FORMAT: Return a JSON object with "bullets" array and "conclusion" string:
+{
+  "bullets": [
+    {
+      "main": "Regulatory uncertainty weighing on sentiment despite positive institutional flows",
+      "subPoints": [
+        {"text": "Senate crypto bill postponed after Coinbase CEO criticism", "sourceUrl": "https://x.com/..."},
+        {"text": "Bitcoin ETF inflows of $1.2B signal continued institutional demand", "sourceUrl": "https://x.com/..."}
+      ]
+    },
+    {
+      "main": "Market-wide risk-off as macro headwinds intensify: BTC $93k (*-2.2%*), ETH $3.2k (*-3.3%*)",
+      "subPoints": [
+        {"text": "Fed minutes reveal hawkish tilt on rate cuts", "sourceUrl": "https://x.com/..."},
+        {"text": "Tariff escalation driving flight to safety"}
+      ]
+    },
+    {
+      "main": "Altcoin weakness accelerating with SOL leading losses at *-6.1%*"
+    }
+  ],
+  "conclusion": "Leaning bearish short-term (1-2 weeks) as macro uncertainty dominates; watching FOMC meeting on Jan 29 for potential sentiment shift."
+}
+
+CONCLUSION REQUIREMENTS:
+- State your bias: bullish, bearish, or neutral
+- Explain WHY in one phrase
+- Include timeframe (e.g., "short-term", "next 1-2 weeks")
+- Mention the key event/milestone you're watching that could change your view
+- Keep it to 1-2 sentences max, conversational tone
 
 QUALITY CHECKLIST:
 - Does each main point have an ANALYTICAL frame (not just "price went down")?
@@ -298,15 +309,18 @@ BAD main points (just restating facts):
 
   const textContent = data.content[0].text;
 
-  // Parse the JSON array from the response
-  const jsonMatch = textContent.match(/\[[\s\S]*\]/);
+  // Parse the JSON object from the response (new format with bullets and conclusion)
+  const jsonMatch = textContent.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error("Failed to parse WhatsUp response");
   }
 
-  const rawBullets = JSON.parse(jsonMatch[0]);
+  const parsed = JSON.parse(jsonMatch[0]);
 
-  // Handle both old format (string[]) and new format (BulletPoint[])
+  // Handle both old format (array) and new format (object with bullets/conclusion)
+  const rawBullets = Array.isArray(parsed) ? parsed : (parsed.bullets || []);
+  const conclusion = typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed.conclusion || "") : "";
+
   interface RawBullet {
     main: string;
     sourceUrl?: string;
@@ -335,6 +349,7 @@ BAD main points (just restating facts):
 
   return {
     bullets,
+    conclusion,
     sentiment,
     topMovers: { gainers, losers }
   };

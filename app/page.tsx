@@ -471,6 +471,7 @@ export default function Home() {
               <WhatsUpDisplay
                 data={whatsUpData || {
                   bullets: [],
+                  conclusion: "",
                   sentiment: "neutral",
                   topMovers: {
                     top50: { gainers: [], losers: [] },

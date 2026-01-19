@@ -33,6 +33,7 @@ export interface BulletPoint {
 
 export interface WhatsUpData {
   bullets: BulletPoint[] | string[];
+  conclusion?: string;
   sentiment: "bullish" | "bearish" | "neutral";
   topMovers: TieredTopMovers;
   timestamp: string;
@@ -241,6 +242,23 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
           ))}
         </ul>
       </div>
+
+      {/* Conclusion */}
+      {data.conclusion && (
+        <div
+          className="mb-5 p-3 rounded-lg"
+          style={{
+            backgroundColor: "var(--bg-tertiary)",
+            borderLeft: "3px solid var(--accent)",
+          }}
+        >
+          <p
+            className="text-secondary italic"
+            style={{ fontSize: "var(--text-sm)", lineHeight: 1.6 }}
+            dangerouslySetInnerHTML={{ __html: formatText(data.conclusion) }}
+          />
+        </div>
+      )}
 
       {/* Top Movers - Improved Layout */}
       <div className="mb-4">
