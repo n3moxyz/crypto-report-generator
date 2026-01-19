@@ -1,4 +1,5 @@
 import { fetchSpecificCoins, CoinData } from "./coingecko";
+import { fetchCryptoIntelFromGrok, GrokCryptoIntel } from "./grok";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 
@@ -37,50 +38,6 @@ function formatOtherPrice(price: number): string {
   }
 }
 
-// Fetch recent crypto news
-async function fetchCryptoNews(): Promise<string[]> {
-  try {
-    // Try CryptoPanic public API
-    const response = await fetch(
-      "https://cryptopanic.com/api/free/v1/posts/?public=true",
-      { next: { revalidate: 300 } }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.results && Array.isArray(data.results)) {
-        return data.results
-          .slice(0, 10)
-          .map((item: { title: string }) => item.title);
-      }
-    }
-  } catch (e) {
-    console.log("CryptoPanic fetch failed, trying alternative...");
-  }
-
-  try {
-    // Alternative: CoinGecko status updates
-    const response = await fetch(
-      "https://api.coingecko.com/api/v3/status_updates?per_page=10",
-      { next: { revalidate: 300 } }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.status_updates && Array.isArray(data.status_updates)) {
-        return data.status_updates
-          .slice(0, 10)
-          .map((item: { user_title: string; description: string }) =>
-            `${item.user_title}: ${item.description?.slice(0, 100)}`
-          );
-      }
-    }
-  } catch (e) {
-    console.log("CoinGecko status fetch failed");
-  }
-
-  return [];
-}
 
 export async function generateWhatsUp(): Promise<WhatsUpData> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -89,10 +46,10 @@ export async function generateWhatsUp(): Promise<WhatsUpData> {
     throw new Error("ANTHROPIC_API_KEY is not configured");
   }
 
-  // Fetch real prices and news in parallel
-  const [coins, newsHeadlines] = await Promise.all([
+  // Fetch real prices and Grok intelligence in parallel
+  const [coins, grokIntel] = await Promise.all([
     fetchSpecificCoins(),
-    fetchCryptoNews()
+    fetchCryptoIntelFromGrok()
   ]);
 
   // Sort by 24h change to get real top movers
@@ -141,39 +98,81 @@ export async function generateWhatsUp(): Promise<WhatsUpData> {
   else if (avgChange < -2) sentiment = "bearish";
   else sentiment = "neutral";
 
-  // Build news context
-  const newsContext = newsHeadlines.length > 0
-    ? `\n\nRECENT HEADLINES:\n${newsHeadlines.map(h => `- ${h}`).join('\n')}`
-    : '';
+  // Build Grok intelligence context
+  const hasGrokIntel = grokIntel.breakingNews.length > 0 || grokIntel.narratives.length > 0;
 
-  const systemPrompt = `You are a crypto market analyst providing a morning briefing for Asia-timezone traders. US market hours just ended.
+  let intelContext = '';
+  if (hasGrokIntel) {
+    intelContext = '\n\n=== REAL-TIME X/TWITTER INTELLIGENCE (last 24-48h) ===';
 
-Your job is to explain WHY prices moved, not just state the numbers. Connect price action to:
-- Crypto-specific news (ETF flows, exchange issues, protocol updates, whale movements)
-- Macro backdrop ONLY if relevant (US equities futures, Fed policy, Trump tariffs, economic data, risk-on/risk-off sentiment)
+    if (grokIntel.breakingNews.length > 0) {
+      intelContext += `\n\nBREAKING NEWS:\n${grokIntel.breakingNews.map(n => `• ${n}`).join('\n')}`;
+    }
 
-FORMATTING RULES:
-- BTC prices in rounded thousands: $104k, $98k
-- ETH prices in rounded hundreds: $3.2k, $2.8k
-- SOL prices rounded to nearest 10: $240, $180
-- Price changes in *italics* with 1 decimal: *+2.3%*, *-1.5%*
+    if (grokIntel.narratives.length > 0) {
+      intelContext += `\n\nDOMINANT NARRATIVES:\n${grokIntel.narratives.map(n => `• ${n}`).join('\n')}`;
+    }
 
-Be specific about what happened during US hours. If macro factors (equities, tariffs, Fed) are driving crypto, mention them. If crypto is moving independently, focus on crypto-specific catalysts. Don't force macro commentary if it's not relevant.`;
+    if (grokIntel.keyTweets.length > 0) {
+      intelContext += `\n\nKEY ALPHA FROM CT:\n${grokIntel.keyTweets.map(t => `• ${t}`).join('\n')}`;
+    }
 
-  const userPrompt = `CURRENT PRICES (live data):
+    if (grokIntel.sentiment) {
+      intelContext += `\n\nCT MOOD: ${grokIntel.sentiment}`;
+    }
+  }
+
+  const systemPrompt = `You are a sharp crypto market analyst known for cutting through noise and delivering unique, actionable insights. You write for sophisticated traders who want to know WHAT happened, WHY it matters, and WHAT'S NEXT.
+
+Your style:
+- Lead with the most important insight, not generic price recaps
+- Connect dots others miss: on-chain data → narrative shifts → price action
+- Call out specific catalysts with conviction (ETF flows, whale wallets, protocol events)
+- Be contrarian when warranted - don't just echo consensus
+- Include specific numbers: "$420M liquidated", "Wallet 0x... moved 10k ETH", "Funding at +0.03%"
+
+FORMATTING:
+- BTC: $104k format
+- ETH: $3.2k format
+- SOL: $240 format
+- Percentages in *italics*: *+2.3%*
+- Token mentions in caps: BTC, ETH, SOL, ARB
+
+DON'T:
+- State obvious price movements without explaining why
+- Force macro commentary if crypto is moving on its own
+- Be wishy-washy with "could go up or down"
+- Use generic phrases like "market showing volatility"`;
+
+  const userPrompt = `LIVE PRICE DATA:
 ${priceContext}
-${newsContext}
+${intelContext}
 
-It's morning in Asia. US trading session just closed. Based on the price data${newsHeadlines.length > 0 ? ' and recent headlines' : ''}, write 4-5 bullet points explaining:
+Write 5-7 sharp bullet points covering:
 
-1. What happened overnight? Why did prices move this way?
-2. Any crypto-specific catalysts (ETF flows, whale moves, protocol news)?
-3. Macro impact if relevant (US equities, tariffs, Fed) - only mention if it's actually driving crypto
-4. Key levels to watch for the Asia session
+1. **THE STORY**: What's the dominant narrative driving crypto right now? What changed in the last 24-48h?
 
-FORMAT: Return ONLY a JSON array of bullet strings. Use the price formatting rules (BTC in $Xk, ETH in $X.Xk, SOL in $XX0). Put percentages in *italics*.
+2. **CATALYSTS**: Specific events moving prices - ETF flows, whale movements, protocol news, liquidation cascades, funding rates
 
-Example: ["BTC holding $104k after *+1.2%* move on ETF inflow news", "S&P futures down 0.5% overnight adding pressure, but crypto showing relative strength", "ETH lagging at $3.2k, *-0.5%* as gas fees spike"]`;
+3. **SECTOR ROTATION**: Which sectors/tokens are gaining mindshare? (AI, memes, L2s, DePIN, etc.) Any notable outperformers or laggards?
+
+4. **SMART MONEY**: What are whales/institutions doing? Any notable wallet movements or positioning?
+
+5. **CONTRARIAN TAKE**: One insight that goes against the current consensus or highlights something the market is missing
+
+6. **LEVELS TO WATCH**: Key support/resistance for majors, liquidation clusters
+
+FORMAT: Return ONLY a JSON array of bullet strings. Each bullet should be punchy and insight-dense. Use the formatting rules.
+
+Example output style:
+[
+  "BTC grinding toward $105k with *+2.1%* as spot ETFs logged $340M inflows - third consecutive day of accumulation despite macro uncertainty",
+  "ETH underperforming at $3.2k (*-0.8%*) - gas fees spiked 3x on memecoin activity but value isn't flowing to ETH yet",
+  "AI sector rotation accelerating: TAO *+15%*, RNDR *+8%* as Nvidia earnings loom - CT pivoting from memes to 'real utility'",
+  "Whale alert: Jump Trading wallet deposited 15k ETH to Binance - historically precedes volatility, watch for distribution",
+  "Contrarian: Everyone bearish on SOL after memecoin fatigue but Solana DEX volume still 2x Ethereum - market structure stronger than sentiment",
+  "Key levels: BTC $103.5k = CME gap fill, $106.5k = ATH retest. Liquidation cluster at $101k (~$800M longs)"
+]`;
 
   const response = await fetch(ANTHROPIC_API, {
     method: "POST",
@@ -184,7 +183,7 @@ Example: ["BTC holding $104k after *+1.2%* move on ETF inflow news", "S&P future
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 600,
+      max_tokens: 1000,
       system: systemPrompt,
       messages: [
         {
