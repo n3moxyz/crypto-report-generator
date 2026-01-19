@@ -414,7 +414,6 @@ export default function Home() {
                   timestamp: ""
                 }}
                 isLoading={isWhatsUpLoading}
-                prices={displayItems}
               />
             )}
             {isMarketSummaryCollapsed && (
