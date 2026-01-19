@@ -1,10 +1,17 @@
 const XAI_API = "https://api.x.ai/v1/chat/completions";
 
+export interface TweetReference {
+  summary: string;
+  url?: string;
+  author?: string;
+  engagement?: string;
+}
+
 export interface GrokCryptoIntel {
-  narratives: string[];
+  priceDrivers: string[];
   breakingNews: string[];
   sentiment: string;
-  keyTweets: string[];
+  topTweets: TweetReference[];
   searchTimestamp: string;
 }
 
@@ -16,10 +23,10 @@ export async function fetchCryptoIntelFromGrok(): Promise<GrokCryptoIntel> {
   if (!apiKey) {
     console.log("XAI_API_KEY not configured, skipping Grok intelligence");
     return {
-      narratives: [],
+      priceDrivers: [],
       breakingNews: [],
       sentiment: "",
-      keyTweets: [],
+      topTweets: [],
       searchTimestamp,
     };
   }
@@ -44,29 +51,38 @@ CRITICAL RULES:
 2. ONLY report information you can VERIFY from actual X posts in the last 24-48 hours
 3. NEVER make up statistics, prices, ratios, or percentages
 4. NEVER reference events that happened before 48 hours ago as if they're current
-5. If you cannot find specific information, say "No significant news found" - DO NOT HALLUCINATE
-6. Only mention specific tokens/sectors if there are ACTUAL tweets discussing notable price moves or news about them
-7. Do not mention past events (like "December rate cut") as future probabilities`;
+5. If you cannot find specific information, return empty arrays - DO NOT HALLUCINATE
+6. Only mention specific tokens/sectors if there are ACTUAL tweets discussing them
+7. Include links to high-engagement tweets when available`;
 
   const userPrompt = `CURRENT DATE/TIME: ${currentDate}, ${currentTime} UTC
 
 Search X/Twitter for VERIFIED crypto market developments from the LAST 24-48 HOURS ONLY (from ${getDateDaysAgo(2)} to ${getTodayDate()}).
 
+I need to understand WHY crypto prices moved. Find:
+
+1. PRICE DRIVERS: What reasons are people giving for recent price movements? (macro events, news, whale activity, etc.)
+2. BREAKING NEWS: Major events that moved or could move markets
+3. TOP TWEETS: Find 2-4 high-engagement tweets (1000+ likes or from notable accounts) that explain market conditions well. Include the actual X/Twitter URL.
+
 STRICT REQUIREMENTS:
-- Only include information you can verify from actual recent posts
-- If you find no significant news for a category, return an empty array for that category
-- Do not speculate or assume - only report what's actually being discussed
-- Include the approximate time/date if known (e.g., "yesterday", "12 hours ago")
+- Only include verified information from actual posts
+- For top tweets, prioritize posts with good explanations AND high engagement
+- Include actual tweet URLs in format: https://x.com/username/status/id
+- If you find no significant news, return empty arrays
 
 Return as JSON:
 {
-  "breakingNews": ["verified news with source context if possible..."] or [],
-  "narratives": ["what specific tokens people are discussing with real context..."] or [],
-  "keyTweets": ["actual insights being shared, not made up..."] or [],
+  "priceDrivers": ["reason 1 for price movement...", "reason 2..."] or [],
+  "breakingNews": ["verified news item..."] or [],
+  "topTweets": [
+    {"summary": "what the tweet says", "url": "https://x.com/...", "author": "@username", "engagement": "5.2k likes"},
+    ...
+  ] or [],
   "sentiment": "brief factual summary of CT mood, or 'mixed/unclear' if no strong signal"
 }
 
-REMEMBER: Empty arrays are better than hallucinated information. Accuracy over detail.`;
+ACCURACY FIRST. Empty arrays are better than made-up information.`;
 
   try {
     const response = await fetch(XAI_API, {
@@ -113,20 +129,28 @@ REMEMBER: Empty arrays are better than hallucinated information. Accuracy over d
 
     const parsed = JSON.parse(jsonMatch[0]);
 
+    // Parse topTweets which can be objects or strings
+    const topTweets: TweetReference[] = (parsed.topTweets || []).map((t: TweetReference | string) => {
+      if (typeof t === 'string') {
+        return { summary: t };
+      }
+      return t;
+    });
+
     return {
-      narratives: parsed.narratives || [],
+      priceDrivers: parsed.priceDrivers || [],
       breakingNews: parsed.breakingNews || [],
       sentiment: parsed.sentiment || "",
-      keyTweets: parsed.keyTweets || [],
+      topTweets,
       searchTimestamp,
     };
   } catch (error) {
     console.error("Grok fetch error:", error);
     return {
-      narratives: [],
+      priceDrivers: [],
       breakingNews: [],
       sentiment: "",
-      keyTweets: [],
+      topTweets: [],
       searchTimestamp,
     };
   }

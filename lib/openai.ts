@@ -1,15 +1,21 @@
 import { fetchSpecificCoins, CoinData } from "./coingecko";
-import { fetchCryptoIntelFromGrok, GrokCryptoIntel } from "./grok";
+import { fetchCryptoIntelFromGrok, GrokCryptoIntel, TweetReference } from "./grok";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 
+export interface BulletPoint {
+  main: string;
+  subPoints?: string[];
+}
+
 export interface WhatsUpData {
-  bullets: string[];
+  bullets: BulletPoint[];
   sentiment: "bullish" | "bearish" | "neutral";
   topMovers: {
     gainers: Array<{ symbol: string; change: string }>;
     losers: Array<{ symbol: string; change: string }>;
   };
+  topTweets: TweetReference[];
 }
 
 // Format prices as requested
@@ -114,22 +120,18 @@ export async function generateWhatsUp(): Promise<WhatsUpData> {
   });
 
   // Build Grok intelligence context
-  const hasGrokIntel = grokIntel.breakingNews.length > 0 || grokIntel.narratives.length > 0;
+  const hasGrokIntel = grokIntel.breakingNews.length > 0 || grokIntel.priceDrivers.length > 0;
 
   let intelContext = '';
   if (hasGrokIntel) {
     intelContext = '\n\n=== VERIFIED X/TWITTER INTELLIGENCE (last 24-48h) ===';
 
+    if (grokIntel.priceDrivers.length > 0) {
+      intelContext += `\n\nWHY PRICES MOVED (from CT discussion):\n${grokIntel.priceDrivers.map(d => `• ${d}`).join('\n')}`;
+    }
+
     if (grokIntel.breakingNews.length > 0) {
       intelContext += `\n\nBREAKING NEWS:\n${grokIntel.breakingNews.map(n => `• ${n}`).join('\n')}`;
-    }
-
-    if (grokIntel.narratives.length > 0) {
-      intelContext += `\n\nNARRATIVES BEING DISCUSSED:\n${grokIntel.narratives.map(n => `• ${n}`).join('\n')}`;
-    }
-
-    if (grokIntel.keyTweets.length > 0) {
-      intelContext += `\n\nKEY INSIGHTS FROM CT:\n${grokIntel.keyTweets.map(t => `• ${t}`).join('\n')}`;
     }
 
     if (grokIntel.sentiment) {
@@ -164,33 +166,43 @@ LIVE PRICE DATA (verified):
 ${priceContext}
 ${intelContext}
 
-Based ONLY on the data above, write 4-6 bullet points. For each bullet:
-- Only state facts you can verify from the provided data
-- Use the exact prices and percentages from the price data
-- If referencing X/Twitter intel, only include what was actually provided
-- If a category has no relevant data, skip it entirely
+Write 4-6 bullet points about the crypto market in the last 24-48h.
 
-TOPICS TO COVER (only if you have verified data):
-1. Price action summary - what the actual numbers show
-2. Any breaking news from the X intel (if provided)
-3. Notable movers and why (only if you have context from the intel)
-4. Market sentiment (only if clearly indicated in the data)
+STRUCTURE: For each point, provide:
+1. A main observation (what happened)
+2. Sub-points explaining WHY (if the intel provides reasons)
 
-DO NOT:
-- Make up ETF flow numbers unless specifically provided
-- Invent whale wallet addresses or movements
-- Reference events from weeks/months ago as current
-- Mention sectors without specific token context
-- Add "key levels" unless you have actual data for them
-
-FORMAT: Return ONLY a JSON array of bullet strings.
-
-If the X/Twitter intel is empty, a valid response might be:
+FORMAT: Return a JSON array of objects:
 [
-  "BTC at $104k (*+1.2%* 24h) - price action steady with no major catalysts in the last 24h",
-  "ETH holding $3.2k (*-0.5%*) - underperforming BTC slightly",
-  "Market sentiment unclear - limited breaking news in the last 48h"
-]`;
+  {
+    "main": "BTC dropped to $102k (*-3.2%* 24h) - significant selling pressure across majors",
+    "subPoints": ["Reason 1 from the intel...", "Reason 2..."]
+  },
+  {
+    "main": "ETH underperforming at $3.1k (*-4.5%*)",
+    "subPoints": ["Specific reason if available"]
+  },
+  {
+    "main": "Simple observation without known reason"
+  }
+]
+
+RULES:
+- Use exact prices/percentages from the price data
+- Only add subPoints if you have ACTUAL reasons from the X/Twitter intel
+- If no reason is known, omit the subPoints field entirely (don't make one up)
+- Each subPoint should be a specific, verifiable reason
+
+Example with reasons:
+{
+  "main": "Market-wide selling pressure: BTC *-3.2%*, ETH *-4.5%*, SOL *-6.1%*",
+  "subPoints": ["Fed minutes showed hawkish tone, risk assets selling off", "Large BTC transfer to exchanges spotted (~5k BTC)"]
+}
+
+Example without reasons:
+{
+  "main": "BTC holding $104k (*+0.3%*) - relatively quiet 24h with no major moves"
+}`;
 
   const response = await fetch(ANTHROPIC_API, {
     method: "POST",
@@ -233,11 +245,20 @@ If the X/Twitter intel is empty, a valid response might be:
     throw new Error("Failed to parse WhatsUp response");
   }
 
-  const bullets = JSON.parse(jsonMatch[0]) as string[];
+  const rawBullets = JSON.parse(jsonMatch[0]);
+
+  // Handle both old format (string[]) and new format (BulletPoint[])
+  const bullets: BulletPoint[] = rawBullets.map((b: string | BulletPoint) => {
+    if (typeof b === 'string') {
+      return { main: b };
+    }
+    return b;
+  });
 
   return {
     bullets,
     sentiment,
-    topMovers: { gainers, losers }
+    topMovers: { gainers, losers },
+    topTweets: grokIntel.topTweets || []
   };
 }

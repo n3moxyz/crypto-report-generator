@@ -18,11 +18,24 @@ export interface TieredTopMovers {
   top300: { gainers: TopMover[]; losers: TopMover[] };
 }
 
+export interface BulletPoint {
+  main: string;
+  subPoints?: string[];
+}
+
+export interface TweetReference {
+  summary: string;
+  url?: string;
+  author?: string;
+  engagement?: string;
+}
+
 export interface WhatsUpData {
-  bullets: string[];
+  bullets: BulletPoint[] | string[];
   sentiment: "bullish" | "bearish" | "neutral";
   topMovers: TieredTopMovers;
   timestamp: string;
+  topTweets?: TweetReference[];
 }
 
 interface WhatsUpDisplayProps {
@@ -37,6 +50,21 @@ const TIER_OPTIONS: { value: TopMoverTier; label: string }[] = [
   { value: "top300", label: "Top 300" },
 ];
 
+// Helper to format text with *italic* markers
+const formatText = (text: string) => {
+  return text.replace(/\*([^*]+)\*/g, '<span class="text-accent font-medium">$1</span>');
+};
+
+// Normalize bullets to always be BulletPoint[]
+const normalizeBullets = (bullets: BulletPoint[] | string[]): BulletPoint[] => {
+  return bullets.map(b => {
+    if (typeof b === 'string') {
+      return { main: b };
+    }
+    return b;
+  });
+};
+
 export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps) {
   const [selectedTier, setSelectedTier] = useState<TopMoverTier>("top100");
 
@@ -45,6 +73,8 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
     if (price >= 1) return `$${price.toFixed(2)}`;
     return `$${price.toFixed(4)}`;
   };
+
+  const bullets = normalizeBullets(data.bullets);
 
   if (isLoading) {
     return (
@@ -83,23 +113,72 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
         </span>
       </div>
 
-      {/* Bullet Points */}
+      {/* Bullet Points with Sub-points */}
       <div className="data-cell mb-5">
-        <ul className="space-y-3">
-          {data.bullets.map((bullet, index) => (
-            <li
-              key={index}
-              className="flex items-start gap-3 text-primary"
-              style={{ fontSize: "var(--text-sm)", lineHeight: 1.5 }}
-            >
-              <span className="text-accent mt-0.5">•</span>
-              <span dangerouslySetInnerHTML={{
-                __html: bullet.replace(/\*([^*]+)\*/g, '<span class="text-accent font-medium">$1</span>')
-              }} />
+        <ul className="space-y-4">
+          {bullets.map((bullet, index) => (
+            <li key={index}>
+              <div
+                className="flex items-start gap-3 text-primary"
+                style={{ fontSize: "var(--text-sm)", lineHeight: 1.5 }}
+              >
+                <span className="text-accent mt-0.5">•</span>
+                <span dangerouslySetInnerHTML={{ __html: formatText(bullet.main) }} />
+              </div>
+              {bullet.subPoints && bullet.subPoints.length > 0 && (
+                <ul className="ml-6 mt-2 space-y-1.5">
+                  {bullet.subPoints.map((sub, subIndex) => (
+                    <li
+                      key={subIndex}
+                      className="flex items-start gap-2 text-secondary"
+                      style={{ fontSize: "var(--text-xs)", lineHeight: 1.4 }}
+                    >
+                      <span className="text-muted mt-0.5">→</span>
+                      <span dangerouslySetInnerHTML={{ __html: formatText(sub) }} />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>
       </div>
+
+      {/* Top Tweets from X */}
+      {data.topTweets && data.topTweets.length > 0 && (
+        <div className="mb-5">
+          <div className="text-muted mb-2" style={{ fontSize: "var(--text-xs)", fontWeight: 600 }}>
+            FROM X/TWITTER
+          </div>
+          <div className="space-y-2">
+            {data.topTweets.map((tweet, index) => (
+              <div
+                key={index}
+                className="p-3 rounded-lg"
+                style={{ backgroundColor: "var(--bg-tertiary)", border: "1px solid var(--border-color)" }}
+              >
+                <p className="text-primary mb-1" style={{ fontSize: "var(--text-sm)", lineHeight: 1.4 }}>
+                  {tweet.summary}
+                </p>
+                <div className="flex items-center gap-3 text-muted" style={{ fontSize: "var(--text-xs)" }}>
+                  {tweet.author && <span>{tweet.author}</span>}
+                  {tweet.engagement && <span>{tweet.engagement}</span>}
+                  {tweet.url && (
+                    <a
+                      href={tweet.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      View on X →
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Top Movers - Improved Layout */}
       <div className="mb-4">
