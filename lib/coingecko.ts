@@ -204,7 +204,7 @@ function formatEthPrice(price: number): string {
 }
 
 function formatSolPrice(price: number): string {
-  const rounded = Math.round(price / 10) * 10;
+  const rounded = Math.round(price);
   return `$${rounded}`;
 }
 

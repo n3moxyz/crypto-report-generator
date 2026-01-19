@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const ESTIMATED_TIME = 30; // Estimated seconds for market summary
 
 export interface TopMover {
   symbol: string;
@@ -73,6 +75,39 @@ const normalizeSubPoint = (sub: string | SubPoint): { text: string; sourceUrl?: 
 
 export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps) {
   const [selectedTier, setSelectedTier] = useState<TopMoverTier>("top100");
+  const [timeRemaining, setTimeRemaining] = useState(ESTIMATED_TIME);
+  const [startTime, setStartTime] = useState<number | null>(null);
+
+  // Reset and start timer when loading begins
+  useEffect(() => {
+    if (isLoading) {
+      setTimeRemaining(ESTIMATED_TIME);
+      setStartTime(Date.now());
+    } else {
+      setStartTime(null);
+    }
+  }, [isLoading]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (!isLoading || !startTime) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, ESTIMATED_TIME - elapsed);
+      setTimeRemaining(remaining);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isLoading, startTime]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
+  };
+
+  const progress = ((ESTIMATED_TIME - timeRemaining) / ESTIMATED_TIME) * 100;
 
   const formatPrice = (price: number) => {
     if (price >= 1000) return `$${(price / 1000).toFixed(1)}k`;
@@ -86,13 +121,41 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
     return (
       <div className="card p-6">
         <div className="flex flex-col items-center justify-center py-8">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="loading-dot"></span>
-            <span className="loading-dot"></span>
-            <span className="loading-dot"></span>
+          {/* Circular progress indicator */}
+          <div className="relative mb-4">
+            <svg className="w-20 h-20 transform -rotate-90">
+              <circle
+                cx="40"
+                cy="40"
+                r="36"
+                stroke="var(--border-color)"
+                strokeWidth="4"
+                fill="none"
+              />
+              <circle
+                cx="40"
+                cy="40"
+                r="36"
+                stroke="var(--accent)"
+                strokeWidth="4"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 36}`}
+                strokeDashoffset={`${2 * Math.PI * 36 * (1 - progress / 100)}`}
+                style={{ transition: "stroke-dashoffset 0.5s ease" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-primary font-mono font-semibold" style={{ fontSize: "var(--text-lg)" }}>
+                {timeRemaining > 0 ? formatTime(timeRemaining) : "..."}
+              </span>
+            </div>
           </div>
-          <p className="text-secondary" style={{ fontSize: "var(--text-sm)" }}>
-            Fetching market data...
+          <p className="text-secondary mb-1" style={{ fontSize: "var(--text-sm)" }}>
+            Analyzing market data...
+          </p>
+          <p className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
+            {timeRemaining > 0 ? "Fetching X/Twitter intelligence" : "Almost done, finalizing..."}
           </p>
         </div>
       </div>

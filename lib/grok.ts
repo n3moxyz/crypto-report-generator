@@ -5,7 +5,15 @@ export interface SourcedClaim {
   sourceUrl?: string;
 }
 
+export interface ThemeInsight {
+  theme: string;
+  insight: string;
+  evidence: SourcedClaim[];
+  implication: "bullish" | "bearish" | "neutral";
+}
+
 export interface GrokCryptoIntel {
+  themes: ThemeInsight[];
   priceDrivers: SourcedClaim[];
   breakingNews: SourcedClaim[];
   sentiment: string;
@@ -20,6 +28,7 @@ export async function fetchCryptoIntelFromGrok(): Promise<GrokCryptoIntel> {
   if (!apiKey) {
     console.log("XAI_API_KEY not configured, skipping Grok intelligence");
     return {
+      themes: [],
       priceDrivers: [],
       breakingNews: [],
       sentiment: "",
@@ -40,7 +49,8 @@ export async function fetchCryptoIntelFromGrok(): Promise<GrokCryptoIntel> {
     timeZone: 'UTC'
   });
 
-  const systemPrompt = `You are a crypto market intelligence analyst with real-time access to X (Twitter).
+  const systemPrompt = `You are a senior crypto market intelligence analyst with real-time access to X (Twitter).
+Your job is to identify KEY NARRATIVES and THEMES driving market sentiment, not just report headlines.
 
 CRITICAL RULES:
 1. TODAY'S DATE IS: ${currentDate}, ${currentTime} UTC
@@ -49,39 +59,64 @@ CRITICAL RULES:
 4. NEVER reference events that happened before 48 hours ago as if they're current
 5. If you cannot find specific information, return empty arrays - DO NOT HALLUCINATE
 6. Only mention specific tokens/sectors if there are ACTUAL tweets discussing them
-7. Include links to high-engagement tweets when available`;
+7. Include links to high-engagement tweets when available
+8. SYNTHESIZE information into analytical insights, not just facts`;
 
   const userPrompt = `CURRENT DATE/TIME: ${currentDate}, ${currentTime} UTC
 
-Search X/Twitter for VERIFIED crypto market developments from the LAST 48 HOURS ONLY (from ${getDateDaysAgo(2)} to ${getTodayDate()}).
+Analyze X/Twitter crypto discourse from the LAST 48 HOURS (from ${getDateDaysAgo(2)} to ${getTodayDate()}).
+Your job is to identify the KEY NARRATIVES and THEMES driving market sentiment, not just report headlines.
 
-I need to understand WHY crypto prices moved. For each claim, include a source URL from X if available.
+FOCUS ON THESE CATEGORIES:
+1. REGULATORY: SEC decisions, legislation (CLARITY Act, stablecoin bills), enforcement actions
+2. MACRO/FED: Interest rate signals, inflation data, Fed appointments, risk-on/off sentiment
+3. ETF FLOWS: Bitcoin/Ethereum ETF inflows/outflows, institutional moves, fund launches
+4. ONCHAIN/TECHNICAL: Whale movements, liquidations, funding rates, exchange flows
+5. SECTOR-SPECIFIC: AI tokens, memecoins, L2s - only if significant moves with clear catalyst
 
-Find:
-1. PRICE DRIVERS: Reasons for recent price movements (macro events, tariffs, Fed news, whale activity, etc.)
-2. BREAKING NEWS: Major events affecting crypto markets
+For each theme found, provide:
+- An ANALYTICAL INSIGHT (not just a fact - explain the "so what")
+- Supporting evidence from X posts with URLs
+- Market implication (bullish/bearish/neutral for that theme)
 
 CRITICAL REQUIREMENTS:
 - Only include verified information from actual recent posts (last 48h)
-- For each claim that has a source, include the actual X/Twitter URL
-- URLs must be real and from the last 48 hours: https://x.com/username/status/id
+- URLs must be real: https://x.com/username/status/id
 - If you cannot find a source URL for a claim, omit the sourceUrl field
-- If you find no significant news, return empty arrays
+- If you find no significant themes, return empty arrays
+- SYNTHESIZE, don't just list headlines
 
 Return as JSON:
 {
+  "themes": [
+    {
+      "theme": "REGULATORY",
+      "insight": "Regulatory uncertainty weighing on sentiment despite positive ETF flows",
+      "evidence": [
+        {"claim": "Senate crypto bill postponed after industry pushback", "sourceUrl": "https://x.com/..."},
+        {"claim": "SEC commissioner hints at ETF approval delays"}
+      ],
+      "implication": "bearish"
+    },
+    {
+      "theme": "ETF_FLOWS",
+      "insight": "Institutional accumulation continues with record inflows countering retail fear",
+      "evidence": [
+        {"claim": "Bitcoin ETFs saw $1.2B inflows this week", "sourceUrl": "https://x.com/..."}
+      ],
+      "implication": "bullish"
+    }
+  ],
   "priceDrivers": [
-    {"claim": "Trump's 10% tariffs on EU nations over Greenland dispute causing macro uncertainty", "sourceUrl": "https://x.com/coinbureau/status/..."},
-    {"claim": "BTC ETF saw $200M outflows yesterday", "sourceUrl": "https://x.com/..."},
-    {"claim": "General risk-off sentiment in markets"}
-  ] or [],
+    {"claim": "Macro risk-off from tariff escalation", "sourceUrl": "https://x.com/..."}
+  ],
   "breakingNews": [
-    {"claim": "SEC delays ETH ETF decision", "sourceUrl": "https://x.com/..."}
-  ] or [],
-  "sentiment": "brief summary of CT mood, or 'mixed/unclear' if no strong signal"
+    {"claim": "Major exchange announces new listing", "sourceUrl": "https://x.com/..."}
+  ],
+  "sentiment": "cautiously bearish - regulatory concerns outweighing positive flows"
 }
 
-ACCURACY FIRST. Only include sourceUrl if you have an actual recent URL. Empty arrays are better than made-up information.`;
+ACCURACY FIRST. Empty arrays are better than made-up information. Provide analytical insights, not just facts.`;
 
   try {
     const response = await fetch(XAI_API, {
@@ -138,7 +173,19 @@ ACCURACY FIRST. Only include sourceUrl if you have an actual recent URL. Empty a
       });
     };
 
+    // Normalize themes
+    const normalizeThemes = (themes: ThemeInsight[] | undefined): ThemeInsight[] => {
+      if (!themes || !Array.isArray(themes)) return [];
+      return themes.map((t) => ({
+        theme: t.theme || "GENERAL",
+        insight: t.insight || "",
+        evidence: normalizeClaims(t.evidence || []),
+        implication: t.implication || "neutral",
+      }));
+    };
+
     return {
+      themes: normalizeThemes(parsed.themes),
       priceDrivers: normalizeClaims(parsed.priceDrivers),
       breakingNews: normalizeClaims(parsed.breakingNews),
       sentiment: parsed.sentiment || "",
@@ -147,6 +194,7 @@ ACCURACY FIRST. Only include sourceUrl if you have an actual recent URL. Empty a
   } catch (error) {
     console.error("Grok fetch error:", error);
     return {
+      themes: [],
       priceDrivers: [],
       breakingNews: [],
       sentiment: "",

@@ -1,5 +1,5 @@
 import { fetchSpecificCoins, CoinData } from "./coingecko";
-import { fetchCryptoIntelFromGrok, GrokCryptoIntel, SourcedClaim } from "./grok";
+import { fetchCryptoIntelFromGrok, GrokCryptoIntel, SourcedClaim, ThemeInsight } from "./grok";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 
@@ -35,7 +35,7 @@ function formatEthPrice(price: number): string {
 }
 
 function formatSolPrice(price: number): string {
-  const rounded = Math.round(price / 10) * 10;
+  const rounded = Math.round(price);
   return `$${rounded}`;
 }
 
@@ -125,7 +125,7 @@ export async function generateWhatsUp(): Promise<WhatsUpData> {
   });
 
   // Build Grok intelligence context with sources
-  const hasGrokIntel = grokIntel.breakingNews.length > 0 || grokIntel.priceDrivers.length > 0;
+  const hasGrokIntel = grokIntel.themes.length > 0 || grokIntel.breakingNews.length > 0 || grokIntel.priceDrivers.length > 0;
 
   // Format claims with source URLs
   const formatClaim = (c: SourcedClaim) => {
@@ -135,12 +135,28 @@ export async function generateWhatsUp(): Promise<WhatsUpData> {
     return `• ${c.claim}`;
   };
 
+  // Format theme insights
+  const formatTheme = (t: ThemeInsight) => {
+    let themeStr = `\n[${t.theme}] ${t.insight} (${t.implication.toUpperCase()})`;
+    if (t.evidence.length > 0) {
+      themeStr += '\n  Evidence:';
+      t.evidence.forEach(e => {
+        themeStr += `\n  ${formatClaim(e)}`;
+      });
+    }
+    return themeStr;
+  };
+
   let intelContext = '';
   if (hasGrokIntel) {
     intelContext = '\n\n=== VERIFIED X/TWITTER INTELLIGENCE (last 48h) ===';
 
+    if (grokIntel.themes.length > 0) {
+      intelContext += `\n\nKEY MARKET THEMES:${grokIntel.themes.map(formatTheme).join('\n')}`;
+    }
+
     if (grokIntel.priceDrivers.length > 0) {
-      intelContext += `\n\nWHY PRICES MOVED:\n${grokIntel.priceDrivers.map(formatClaim).join('\n')}`;
+      intelContext += `\n\nADDITIONAL PRICE DRIVERS:\n${grokIntel.priceDrivers.map(formatClaim).join('\n')}`;
     }
 
     if (grokIntel.breakingNews.length > 0) {
@@ -152,9 +168,13 @@ export async function generateWhatsUp(): Promise<WhatsUpData> {
     }
   }
 
-  const systemPrompt = `You are a crypto market analyst. Your #1 priority is ACCURACY. You would rather say less than say something wrong.
+  const systemPrompt = `You are a senior crypto market analyst writing for a trading desk.
+Your job is to provide ACTIONABLE INTELLIGENCE, not news summaries.
 
 CURRENT DATE/TIME: ${currentDate}, ${currentTime} UTC
+
+YOUR GOAL: Write analytical insights that explain WHAT is happening AND WHY it matters.
+Frame observations as market narratives, not just price reports.
 
 CRITICAL RULES - MUST FOLLOW:
 1. ONLY use information from the provided price data and X/Twitter intelligence
@@ -165,13 +185,24 @@ CRITICAL RULES - MUST FOLLOW:
 6. The price data shows ACTUAL current prices and 24h changes - use these exact numbers
 7. If X/Twitter intel is empty or sparse, focus only on what you can verify from the price data
 
+QUALITY GUIDANCE - BAD vs GOOD examples:
+
+BAD: "BTC dropped to $93k (-2.2%)"
+GOOD: "Market-wide selling pressure: BTC $93k (*-2.2%*), ETH $3.2k (*-3.3%*), SOL $130 (*-6.1%*)"
+
+BAD: "SEC delayed ETF decision"
+GOOD: "Regulatory uncertainty weighing on sentiment despite positive ETF flows"
+
+BAD: "Prices went down today"
+GOOD: "Federal Reserve policy uncertainty creating sideways action with elevated volatility"
+
 FORMATTING:
 - BTC: $104k format (use actual price from data)
 - ETH: $3.2k format (use actual price from data)
 - SOL: $240 format (use actual price from data)
 - Percentages in *italics*: *+2.3%* (use actual % from data)
 
-ACCURACY > DETAIL. Say less if unsure. Never hallucinate.`;
+Lead with the ANALYTICAL INSIGHT (the "so what"), then support with data. ACCURACY > DETAIL.`;
 
   const userPrompt = `TIMESTAMP: ${currentDate}, ${currentTime} UTC
 
@@ -179,53 +210,58 @@ LIVE PRICE DATA (verified):
 ${priceContext}
 ${intelContext}
 
-Write 4-6 bullet points about the crypto market in the last 48h.
+Write 4-6 ANALYTICAL bullet points about the crypto market. Each should provide MARKET INTELLIGENCE, not just news.
 
-STRUCTURE: For each point, provide:
-1. A main observation (what happened)
-2. Sub-points explaining WHY - include the source URL if one was provided in the intel
+STRUCTURE: For each bullet:
+1. MAIN POINT: An analytical insight that explains what's happening AND why it matters
+   - Frame it as a market narrative, not just a fact
+   - Lead with the "so what" - the implication for traders
+   - Include key price data inline with *italics* for percentages
+
+2. SUB-POINTS: Supporting evidence explaining WHY (when available)
+   - Each sub-point links to a source when provided in the intel
+   - Connect the dots between events and price action
+   - Only include if you have ACTUAL reasons from the X/Twitter intel
 
 FORMAT: Return a JSON array of objects:
 [
   {
-    "main": "BTC dropped to $102k (*-3.2%* 24h) - significant selling pressure across majors",
+    "main": "Regulatory uncertainty weighing on sentiment despite positive institutional flows",
     "subPoints": [
-      {"text": "Trump's tariffs on EU causing macro uncertainty", "sourceUrl": "https://x.com/..."},
-      {"text": "BTC ETF outflows of $200M yesterday", "sourceUrl": "https://x.com/..."}
+      {"text": "Senate crypto bill postponed after Coinbase CEO criticism", "sourceUrl": "https://x.com/..."},
+      {"text": "Bitcoin ETF inflows of $1.2B signal continued institutional demand", "sourceUrl": "https://x.com/..."}
     ]
   },
   {
-    "main": "ETH underperforming at $3.1k (*-4.5%*)",
+    "main": "Market-wide risk-off as macro headwinds intensify: BTC $93k (*-2.2%*), ETH $3.2k (*-3.3%*)",
     "subPoints": [
-      {"text": "Gas fees spiking due to memecoin activity"}
+      {"text": "Fed minutes reveal hawkish tilt on rate cuts", "sourceUrl": "https://x.com/..."},
+      {"text": "Tariff escalation driving flight to safety"}
     ]
   },
   {
-    "main": "Simple observation without known reason"
+    "main": "Altcoin weakness accelerating with SOL leading losses at *-6.1%*"
   }
 ]
 
-RULES:
+QUALITY CHECKLIST:
+- Does each main point have an ANALYTICAL frame (not just "price went down")?
+- Are you explaining the narrative/theme driving the market?
+- Are you connecting events to price action where intel supports it?
 - Use exact prices/percentages from the price data
-- Only add subPoints if you have ACTUAL reasons from the X/Twitter intel
 - If a reason has a [SOURCE: url] in the intel, include it as sourceUrl
-- If no source URL exists for a sub-point, omit the sourceUrl field
 - If no reason is known, omit the subPoints field entirely
-- Each subPoint should be a specific, verifiable reason
 
-Example with sources:
-{
-  "main": "Market-wide selling pressure: BTC *-3.2%*, ETH *-4.5%*, SOL *-6.1%*",
-  "subPoints": [
-    {"text": "Trump announced 10% tariffs on 8 EU nations", "sourceUrl": "https://x.com/coinbureau/status/123..."},
-    {"text": "Risk-off sentiment across all markets"}
-  ]
-}
+GOOD main points (analytical framing):
+✓ "Regulatory uncertainty weighing on sentiment despite positive ETF flows"
+✓ "Federal Reserve policy uncertainty creating sideways action"
+✓ "Altcoin ETF deadline approaching with potential for volatility"
+✓ "Institutional accumulation continues as retail sentiment remains fearful"
 
-Example without reasons:
-{
-  "main": "BTC holding $104k (*+0.3%*) - relatively quiet 48h with no major moves"
-}`;
+BAD main points (just restating facts):
+✗ "BTC dropped to $93k"
+✗ "SEC delayed decision"
+✗ "Prices are down today"`;
 
   const response = await fetch(ANTHROPIC_API, {
     method: "POST",

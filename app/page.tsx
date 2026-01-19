@@ -56,12 +56,7 @@ export default function Home() {
   const [hasWhatsUp, setHasWhatsUp] = useState(false);
   const [hasReport, setHasReport] = useState(false);
   const [isMarketSummaryCollapsed, setIsMarketSummaryCollapsed] = useState(false);
-
-  // Password modal state
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [password, setPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [isReportCollapsed, setIsReportCollapsed] = useState(false);
 
   useEffect(() => {
     refreshPrices();
@@ -152,21 +147,11 @@ export default function Home() {
     }
   };
 
-  const handleGenerateClick = () => {
-    setPasswordError("");
-    setShowPasswordModal(true);
-  };
-
   const generateReport = async () => {
-    if (!password) {
-      setPasswordError("Password is required");
-      return;
-    }
-
-    setShowPasswordModal(false);
     setIsLoading(true);
     setError("");
     setReport("");
+    setIsReportCollapsed(false); // Expand report section when generating
     // Collapse market summary when generating report
     if (hasWhatsUp) {
       setIsMarketSummaryCollapsed(true);
@@ -187,23 +172,17 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prices: data.coins, password }),
+        body: JSON.stringify({ prices: data.coins }),
       });
 
       if (!reportResponse.ok) {
         const errorData = await reportResponse.json();
-        if (reportResponse.status === 401) {
-          setPassword("");
-          throw new Error("Invalid password");
-        }
         throw new Error(errorData.error || "Failed to generate update");
       }
 
       const reportData = await reportResponse.json();
       setReport(reportData.report);
       setHasReport(true);
-      // Clear password after successful generation
-      setPassword("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -366,7 +345,7 @@ export default function Home() {
               Actions
             </h2>
             <WhatsUpButton onClick={fetchWhatsUp} isLoading={isWhatsUpLoading} />
-            <ReportButton onClick={handleGenerateClick} isLoading={isLoading} />
+            <ReportButton onClick={generateReport} isLoading={isLoading} />
           </div>
         </section>
 
@@ -427,117 +406,50 @@ export default function Home() {
           </section>
         )}
 
-        {/* Report Section */}
+        {/* Report Section - Collapsible */}
         {(hasReport || isLoading) && (
           <section className="mb-6">
-            <h2 className="font-bold text-primary mb-3" style={{ fontSize: "var(--text-base)" }}>
-              Weekly Update
-            </h2>
-            <ReportDisplay report={report} isLoading={isLoading} />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-primary" style={{ fontSize: "var(--text-base)" }}>
+                Weekly Update
+              </h2>
+              {hasReport && !isLoading && (
+                <button
+                  onClick={() => setIsReportCollapsed(!isReportCollapsed)}
+                  className="btn-ghost flex items-center gap-1"
+                  style={{ fontSize: "var(--text-xs)" }}
+                >
+                  {isReportCollapsed ? (
+                    <>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      Show More
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                      Collapse
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            {!isReportCollapsed && (
+              <ReportDisplay report={report} isLoading={isLoading} />
+            )}
+            {isReportCollapsed && (
+              <div className="card p-3 text-center">
+                <span className="text-muted" style={{ fontSize: "var(--text-sm)" }}>
+                  Weekly update collapsed. Click "Show More" to expand.
+                </span>
+              </div>
+            )}
           </section>
         )}
       </main>
-
-      {/* Password Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => {
-              setShowPasswordModal(false);
-              setPassword("");
-              setPasswordError("");
-            }}
-          />
-          {/* Modal */}
-          <div className="card p-6 relative z-10 w-full max-w-sm mx-4">
-            <div className="flex items-center gap-2 mb-4">
-              <svg
-                className="w-5 h-5 text-accent"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-              <h3 className="font-bold text-primary" style={{ fontSize: "var(--text-lg)" }}>
-                Password Required
-              </h3>
-            </div>
-            <p className="text-secondary mb-4" style={{ fontSize: "var(--text-sm)" }}>
-              Enter the password to generate the update.
-            </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                generateReport();
-              }}
-            >
-              <div className="relative mb-2">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setPasswordError("");
-                  }}
-                  placeholder="Enter password"
-                  className="w-full px-3 py-2 pr-10 rounded text-primary bg-tertiary"
-                  style={{
-                    fontSize: "var(--text-sm)",
-                    border: passwordError ? "1px solid var(--danger)" : "1px solid var(--border-color)",
-                  }}
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors"
-                  style={{ padding: "4px" }}
-                >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-              {passwordError && (
-                <p className="text-sm mb-3" style={{ color: "var(--danger)" }}>
-                  {passwordError}
-                </p>
-              )}
-              <div className="flex gap-2 mt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPasswordModal(false);
-                    setPassword("");
-                    setPasswordError("");
-                  }}
-                  className="btn btn-secondary flex-1"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary flex-1">
-                  Generate
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
