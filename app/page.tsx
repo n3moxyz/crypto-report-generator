@@ -55,6 +55,7 @@ export default function Home() {
 
   const [hasWhatsUp, setHasWhatsUp] = useState(false);
   const [hasReport, setHasReport] = useState(false);
+  const [isReportAuthenticated, setIsReportAuthenticated] = useState(false);
   const [isMarketSummaryCollapsed, setIsMarketSummaryCollapsed] = useState(false);
   const [isReportCollapsed, setIsReportCollapsed] = useState(false);
 
@@ -62,6 +63,88 @@ export default function Home() {
     refreshPrices();
   }, []);
 
+  const refreshAll = async (coins?: string[]) => {
+    setIsPricesLoading(true);
+    setError("");
+
+    // Also set loading states for whatsup and report if they exist
+    if (hasWhatsUp) {
+      setIsWhatsUpLoading(true);
+      setIsMarketSummaryCollapsed(false);
+    }
+    if (hasReport && isReportAuthenticated) {
+      setIsLoading(true);
+      setIsReportCollapsed(false);
+    }
+
+    try {
+      const coinsParam = (coins || selectedCoins).join(",");
+
+      // Fetch prices first
+      const pricesResponse = await fetch(`/api/prices?coins=${coinsParam}`);
+      if (!pricesResponse.ok) {
+        throw new Error("Failed to fetch prices");
+      }
+      const pricesData = await pricesResponse.json();
+      setDisplayItems(pricesData.displayItems);
+      setAvailableCoins(pricesData.availableCoins || []);
+      const newTopMovers = pricesData.topMovers || {
+        top50: { gainers: [], losers: [] },
+        top100: { gainers: [], losers: [] },
+        top200: { gainers: [], losers: [] },
+        top300: { gainers: [], losers: [] },
+      };
+      setTopMovers(newTopMovers);
+      setLastPriceUpdate(new Date());
+      setIsPricesLoading(false);
+
+      // Refresh whatsup if it was displayed
+      if (hasWhatsUp) {
+        try {
+          const whatsUpResponse = await fetch("/api/whatsup");
+          if (whatsUpResponse.ok) {
+            const whatsUpResult = await whatsUpResponse.json();
+            setWhatsUpData({
+              ...whatsUpResult,
+              topMovers: newTopMovers,
+            });
+          }
+        } catch {
+          // Silently fail whatsup refresh, prices are already updated
+        } finally {
+          setIsWhatsUpLoading(false);
+        }
+      }
+
+      // Refresh report if it was generated and user is authenticated
+      if (hasReport && isReportAuthenticated) {
+        try {
+          const reportResponse = await fetch("/api/generate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ prices: pricesData.coins }),
+          });
+          if (reportResponse.ok) {
+            const reportResult = await reportResponse.json();
+            setReport(reportResult.report);
+          }
+        } catch {
+          // Silently fail report refresh
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to refresh");
+      setIsPricesLoading(false);
+      setIsWhatsUpLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  // Simple prices-only refresh for coin selection changes
   const refreshPrices = async (coins?: string[]) => {
     setIsPricesLoading(true);
     setError("");
@@ -84,7 +167,7 @@ export default function Home() {
       setTopMovers(newTopMovers);
       setLastPriceUpdate(new Date());
 
-      // Also update market summary if it's been displayed
+      // Also update market summary top movers if it's been displayed
       if (hasWhatsUp && whatsUpData) {
         setWhatsUpData({
           ...whatsUpData,
@@ -276,7 +359,7 @@ export default function Home() {
                 onSelectionChange={handleCoinSelectionChange}
                 maxSelection={11}
               />
-              <RefreshPricesButton onClick={() => refreshPrices()} isLoading={isPricesLoading} />
+              <RefreshPricesButton onClick={() => refreshAll()} isLoading={isPricesLoading || isWhatsUpLoading || isLoading} />
             </div>
           </div>
 
@@ -349,7 +432,7 @@ export default function Home() {
               Actions
             </h2>
             <WhatsUpButton onClick={fetchWhatsUp} isLoading={isWhatsUpLoading} />
-            <ReportButton onClick={generateReport} isLoading={isLoading} />
+            <ReportButton onClick={generateReport} isLoading={isLoading} onAuthenticated={() => setIsReportAuthenticated(true)} />
           </div>
         </section>
 

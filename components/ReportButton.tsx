@@ -5,9 +5,10 @@ import { useState } from "react";
 interface ReportButtonProps {
   onClick: () => void;
   isLoading: boolean;
+  onAuthenticated?: () => void;
 }
 
-export default function ReportButton({ onClick, isLoading }: ReportButtonProps) {
+export default function ReportButton({ onClick, isLoading, onAuthenticated }: ReportButtonProps) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -39,6 +40,7 @@ export default function ReportButton({ onClick, isLoading }: ReportButtonProps) 
       if (response.ok) {
         setShowPasswordModal(false);
         setPassword("");
+        onAuthenticated?.();
         onClick();
       } else {
         const data = await response.json();
