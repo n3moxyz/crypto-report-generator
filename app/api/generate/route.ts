@@ -80,7 +80,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
     const trimmedPassword = password?.trim();
     if (!trimmedPassword || trimmedPassword !== correctPassword) {
       return NextResponse.json(

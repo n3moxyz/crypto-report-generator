@@ -1,17 +1,14 @@
 const XAI_API = "https://api.x.ai/v1/chat/completions";
 
-export interface TweetReference {
-  summary: string;
-  url?: string;
-  author?: string;
-  engagement?: string;
+export interface SourcedClaim {
+  claim: string;
+  sourceUrl?: string;
 }
 
 export interface GrokCryptoIntel {
-  priceDrivers: string[];
-  breakingNews: string[];
+  priceDrivers: SourcedClaim[];
+  breakingNews: SourcedClaim[];
   sentiment: string;
-  topTweets: TweetReference[];
   searchTimestamp: string;
 }
 
@@ -26,7 +23,6 @@ export async function fetchCryptoIntelFromGrok(): Promise<GrokCryptoIntel> {
       priceDrivers: [],
       breakingNews: [],
       sentiment: "",
-      topTweets: [],
       searchTimestamp,
     };
   }
@@ -57,32 +53,35 @@ CRITICAL RULES:
 
   const userPrompt = `CURRENT DATE/TIME: ${currentDate}, ${currentTime} UTC
 
-Search X/Twitter for VERIFIED crypto market developments from the LAST 24-48 HOURS ONLY (from ${getDateDaysAgo(2)} to ${getTodayDate()}).
+Search X/Twitter for VERIFIED crypto market developments from the LAST 48 HOURS ONLY (from ${getDateDaysAgo(2)} to ${getTodayDate()}).
 
-I need to understand WHY crypto prices moved. Find:
+I need to understand WHY crypto prices moved. For each claim, include a source URL from X if available.
 
-1. PRICE DRIVERS: What reasons are people giving for recent price movements? (macro events, news, whale activity, etc.)
-2. BREAKING NEWS: Major events that moved or could move markets
-3. TOP TWEETS: Find 2-4 high-engagement tweets (1000+ likes or from notable accounts) that explain market conditions well. Include the actual X/Twitter URL.
+Find:
+1. PRICE DRIVERS: Reasons for recent price movements (macro events, tariffs, Fed news, whale activity, etc.)
+2. BREAKING NEWS: Major events affecting crypto markets
 
-STRICT REQUIREMENTS:
-- Only include verified information from actual posts
-- For top tweets, prioritize posts with good explanations AND high engagement
-- Include actual tweet URLs in format: https://x.com/username/status/id
+CRITICAL REQUIREMENTS:
+- Only include verified information from actual recent posts (last 48h)
+- For each claim that has a source, include the actual X/Twitter URL
+- URLs must be real and from the last 48 hours: https://x.com/username/status/id
+- If you cannot find a source URL for a claim, omit the sourceUrl field
 - If you find no significant news, return empty arrays
 
 Return as JSON:
 {
-  "priceDrivers": ["reason 1 for price movement...", "reason 2..."] or [],
-  "breakingNews": ["verified news item..."] or [],
-  "topTweets": [
-    {"summary": "what the tweet says", "url": "https://x.com/...", "author": "@username", "engagement": "5.2k likes"},
-    ...
+  "priceDrivers": [
+    {"claim": "Trump's 10% tariffs on EU nations over Greenland dispute causing macro uncertainty", "sourceUrl": "https://x.com/coinbureau/status/..."},
+    {"claim": "BTC ETF saw $200M outflows yesterday", "sourceUrl": "https://x.com/..."},
+    {"claim": "General risk-off sentiment in markets"}
   ] or [],
-  "sentiment": "brief factual summary of CT mood, or 'mixed/unclear' if no strong signal"
+  "breakingNews": [
+    {"claim": "SEC delays ETH ETF decision", "sourceUrl": "https://x.com/..."}
+  ] or [],
+  "sentiment": "brief summary of CT mood, or 'mixed/unclear' if no strong signal"
 }
 
-ACCURACY FIRST. Empty arrays are better than made-up information.`;
+ACCURACY FIRST. Only include sourceUrl if you have an actual recent URL. Empty arrays are better than made-up information.`;
 
   try {
     const response = await fetch(XAI_API, {
@@ -129,19 +128,20 @@ ACCURACY FIRST. Empty arrays are better than made-up information.`;
 
     const parsed = JSON.parse(jsonMatch[0]);
 
-    // Parse topTweets which can be objects or strings
-    const topTweets: TweetReference[] = (parsed.topTweets || []).map((t: TweetReference | string) => {
-      if (typeof t === 'string') {
-        return { summary: t };
-      }
-      return t;
-    });
+    // Parse priceDrivers and breakingNews which can be objects or strings
+    const normalizeClaims = (items: (SourcedClaim | string)[]): SourcedClaim[] => {
+      return (items || []).map((item) => {
+        if (typeof item === 'string') {
+          return { claim: item };
+        }
+        return item;
+      });
+    };
 
     return {
-      priceDrivers: parsed.priceDrivers || [],
-      breakingNews: parsed.breakingNews || [],
+      priceDrivers: normalizeClaims(parsed.priceDrivers),
+      breakingNews: normalizeClaims(parsed.breakingNews),
       sentiment: parsed.sentiment || "",
-      topTweets,
       searchTimestamp,
     };
   } catch (error) {
@@ -150,7 +150,6 @@ ACCURACY FIRST. Empty arrays are better than made-up information.`;
       priceDrivers: [],
       breakingNews: [],
       sentiment: "",
-      topTweets: [],
       searchTimestamp,
     };
   }

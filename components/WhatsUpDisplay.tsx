@@ -18,16 +18,15 @@ export interface TieredTopMovers {
   top300: { gainers: TopMover[]; losers: TopMover[] };
 }
 
-export interface BulletPoint {
-  main: string;
-  subPoints?: string[];
+export interface SubPoint {
+  text: string;
+  sourceUrl?: string;
 }
 
-export interface TweetReference {
-  summary: string;
-  url?: string;
-  author?: string;
-  engagement?: string;
+export interface BulletPoint {
+  main: string;
+  sourceUrl?: string;
+  subPoints?: (string | SubPoint)[];
 }
 
 export interface WhatsUpData {
@@ -35,7 +34,6 @@ export interface WhatsUpData {
   sentiment: "bullish" | "bearish" | "neutral";
   topMovers: TieredTopMovers;
   timestamp: string;
-  topTweets?: TweetReference[];
 }
 
 interface WhatsUpDisplayProps {
@@ -63,6 +61,14 @@ const normalizeBullets = (bullets: BulletPoint[] | string[]): BulletPoint[] => {
     }
     return b;
   });
+};
+
+// Normalize sub-points to extract text and sourceUrl
+const normalizeSubPoint = (sub: string | SubPoint): { text: string; sourceUrl?: string } => {
+  if (typeof sub === 'string') {
+    return { text: sub };
+  }
+  return sub;
 };
 
 export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps) {
@@ -104,9 +110,9 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
   return (
     <div className="card p-5">
       {/* Header with sentiment */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-secondary" style={{ fontSize: "var(--text-sm)" }}>
-          24h Overview
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-secondary font-medium" style={{ fontSize: "var(--text-base)" }}>
+          24-48h Market Overview
         </span>
         <span className={`pill ${sentiment.className}`}>
           {sentiment.label}
@@ -115,70 +121,63 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
 
       {/* Bullet Points with Sub-points */}
       <div className="data-cell mb-5">
-        <ul className="space-y-4">
+        <ul className="space-y-3">
           {bullets.map((bullet, index) => (
             <li key={index}>
               <div
-                className="flex items-start gap-3 text-primary"
-                style={{ fontSize: "var(--text-sm)", lineHeight: 1.5 }}
+                className="flex gap-3 text-primary"
+                style={{ fontSize: "var(--text-base)", lineHeight: 1.6 }}
               >
-                <span className="text-accent mt-0.5">•</span>
-                <span dangerouslySetInnerHTML={{ __html: formatText(bullet.main) }} />
+                <span className="text-accent flex-shrink-0" style={{ lineHeight: 1.6 }}>•</span>
+                <span>
+                  <span dangerouslySetInnerHTML={{ __html: formatText(bullet.main) }} />
+                  {bullet.sourceUrl && (
+                    <a
+                      href={bullet.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline ml-1"
+                      style={{ fontSize: "var(--text-sm)" }}
+                    >
+                      (Source)
+                    </a>
+                  )}
+                </span>
               </div>
               {bullet.subPoints && bullet.subPoints.length > 0 && (
-                <ul className="ml-6 mt-2 space-y-1.5">
-                  {bullet.subPoints.map((sub, subIndex) => (
-                    <li
-                      key={subIndex}
-                      className="flex items-start gap-2 text-secondary"
-                      style={{ fontSize: "var(--text-xs)", lineHeight: 1.4 }}
-                    >
-                      <span className="text-muted mt-0.5">→</span>
-                      <span dangerouslySetInnerHTML={{ __html: formatText(sub) }} />
-                    </li>
-                  ))}
+                <ul className="ml-6 mt-1.5 space-y-1">
+                  {bullet.subPoints.map((sub, subIndex) => {
+                    const { text, sourceUrl } = normalizeSubPoint(sub);
+                    return (
+                      <li
+                        key={subIndex}
+                        className="flex gap-2 text-secondary"
+                        style={{ fontSize: "var(--text-sm)", lineHeight: 1.5 }}
+                      >
+                        <span className="text-muted flex-shrink-0" style={{ lineHeight: 1.5 }}>→</span>
+                        <span>
+                          <span dangerouslySetInnerHTML={{ __html: formatText(text) }} />
+                          {sourceUrl && (
+                            <a
+                              href={sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent hover:underline ml-1"
+                              style={{ fontSize: "var(--text-xs)" }}
+                            >
+                              (Source)
+                            </a>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </li>
           ))}
         </ul>
       </div>
-
-      {/* Top Tweets from X */}
-      {data.topTweets && data.topTweets.length > 0 && (
-        <div className="mb-5">
-          <div className="text-muted mb-2" style={{ fontSize: "var(--text-xs)", fontWeight: 600 }}>
-            FROM X/TWITTER
-          </div>
-          <div className="space-y-2">
-            {data.topTweets.map((tweet, index) => (
-              <div
-                key={index}
-                className="p-3 rounded-lg"
-                style={{ backgroundColor: "var(--bg-tertiary)", border: "1px solid var(--border-color)" }}
-              >
-                <p className="text-primary mb-1" style={{ fontSize: "var(--text-sm)", lineHeight: 1.4 }}>
-                  {tweet.summary}
-                </p>
-                <div className="flex items-center gap-3 text-muted" style={{ fontSize: "var(--text-xs)" }}>
-                  {tweet.author && <span>{tweet.author}</span>}
-                  {tweet.engagement && <span>{tweet.engagement}</span>}
-                  {tweet.url && (
-                    <a
-                      href={tweet.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-accent hover:underline"
-                    >
-                      View on X →
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Top Movers - Improved Layout */}
       <div className="mb-4">

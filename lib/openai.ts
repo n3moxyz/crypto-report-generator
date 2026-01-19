@@ -1,11 +1,17 @@
 import { fetchSpecificCoins, CoinData } from "./coingecko";
-import { fetchCryptoIntelFromGrok, GrokCryptoIntel, TweetReference } from "./grok";
+import { fetchCryptoIntelFromGrok, GrokCryptoIntel, SourcedClaim } from "./grok";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 
+export interface SubPoint {
+  text: string;
+  sourceUrl?: string;
+}
+
 export interface BulletPoint {
   main: string;
-  subPoints?: string[];
+  sourceUrl?: string;
+  subPoints?: SubPoint[];
 }
 
 export interface WhatsUpData {
@@ -15,7 +21,6 @@ export interface WhatsUpData {
     gainers: Array<{ symbol: string; change: string }>;
     losers: Array<{ symbol: string; change: string }>;
   };
-  topTweets: TweetReference[];
 }
 
 // Format prices as requested
@@ -119,19 +124,27 @@ export async function generateWhatsUp(): Promise<WhatsUpData> {
     timeZone: 'UTC'
   });
 
-  // Build Grok intelligence context
+  // Build Grok intelligence context with sources
   const hasGrokIntel = grokIntel.breakingNews.length > 0 || grokIntel.priceDrivers.length > 0;
+
+  // Format claims with source URLs
+  const formatClaim = (c: SourcedClaim) => {
+    if (c.sourceUrl) {
+      return `• ${c.claim} [SOURCE: ${c.sourceUrl}]`;
+    }
+    return `• ${c.claim}`;
+  };
 
   let intelContext = '';
   if (hasGrokIntel) {
-    intelContext = '\n\n=== VERIFIED X/TWITTER INTELLIGENCE (last 24-48h) ===';
+    intelContext = '\n\n=== VERIFIED X/TWITTER INTELLIGENCE (last 48h) ===';
 
     if (grokIntel.priceDrivers.length > 0) {
-      intelContext += `\n\nWHY PRICES MOVED (from CT discussion):\n${grokIntel.priceDrivers.map(d => `• ${d}`).join('\n')}`;
+      intelContext += `\n\nWHY PRICES MOVED:\n${grokIntel.priceDrivers.map(formatClaim).join('\n')}`;
     }
 
     if (grokIntel.breakingNews.length > 0) {
-      intelContext += `\n\nBREAKING NEWS:\n${grokIntel.breakingNews.map(n => `• ${n}`).join('\n')}`;
+      intelContext += `\n\nBREAKING NEWS:\n${grokIntel.breakingNews.map(formatClaim).join('\n')}`;
     }
 
     if (grokIntel.sentiment) {
@@ -166,21 +179,26 @@ LIVE PRICE DATA (verified):
 ${priceContext}
 ${intelContext}
 
-Write 4-6 bullet points about the crypto market in the last 24-48h.
+Write 4-6 bullet points about the crypto market in the last 48h.
 
 STRUCTURE: For each point, provide:
 1. A main observation (what happened)
-2. Sub-points explaining WHY (if the intel provides reasons)
+2. Sub-points explaining WHY - include the source URL if one was provided in the intel
 
 FORMAT: Return a JSON array of objects:
 [
   {
     "main": "BTC dropped to $102k (*-3.2%* 24h) - significant selling pressure across majors",
-    "subPoints": ["Reason 1 from the intel...", "Reason 2..."]
+    "subPoints": [
+      {"text": "Trump's tariffs on EU causing macro uncertainty", "sourceUrl": "https://x.com/..."},
+      {"text": "BTC ETF outflows of $200M yesterday", "sourceUrl": "https://x.com/..."}
+    ]
   },
   {
     "main": "ETH underperforming at $3.1k (*-4.5%*)",
-    "subPoints": ["Specific reason if available"]
+    "subPoints": [
+      {"text": "Gas fees spiking due to memecoin activity"}
+    ]
   },
   {
     "main": "Simple observation without known reason"
@@ -190,18 +208,23 @@ FORMAT: Return a JSON array of objects:
 RULES:
 - Use exact prices/percentages from the price data
 - Only add subPoints if you have ACTUAL reasons from the X/Twitter intel
-- If no reason is known, omit the subPoints field entirely (don't make one up)
+- If a reason has a [SOURCE: url] in the intel, include it as sourceUrl
+- If no source URL exists for a sub-point, omit the sourceUrl field
+- If no reason is known, omit the subPoints field entirely
 - Each subPoint should be a specific, verifiable reason
 
-Example with reasons:
+Example with sources:
 {
   "main": "Market-wide selling pressure: BTC *-3.2%*, ETH *-4.5%*, SOL *-6.1%*",
-  "subPoints": ["Fed minutes showed hawkish tone, risk assets selling off", "Large BTC transfer to exchanges spotted (~5k BTC)"]
+  "subPoints": [
+    {"text": "Trump announced 10% tariffs on 8 EU nations", "sourceUrl": "https://x.com/coinbureau/status/123..."},
+    {"text": "Risk-off sentiment across all markets"}
+  ]
 }
 
 Example without reasons:
 {
-  "main": "BTC holding $104k (*+0.3%*) - relatively quiet 24h with no major moves"
+  "main": "BTC holding $104k (*+0.3%*) - relatively quiet 48h with no major moves"
 }`;
 
   const response = await fetch(ANTHROPIC_API, {
@@ -248,17 +271,35 @@ Example without reasons:
   const rawBullets = JSON.parse(jsonMatch[0]);
 
   // Handle both old format (string[]) and new format (BulletPoint[])
-  const bullets: BulletPoint[] = rawBullets.map((b: string | BulletPoint) => {
+  interface RawBullet {
+    main: string;
+    sourceUrl?: string;
+    subPoints?: (string | SubPoint)[];
+  }
+
+  const bullets: BulletPoint[] = rawBullets.map((b: string | RawBullet) => {
     if (typeof b === 'string') {
       return { main: b };
     }
-    return b;
+    // Normalize subPoints if they exist
+    const result: BulletPoint = { main: b.main };
+    if (b.sourceUrl) {
+      result.sourceUrl = b.sourceUrl;
+    }
+    if (b.subPoints && b.subPoints.length > 0) {
+      result.subPoints = b.subPoints.map((sp: string | SubPoint) => {
+        if (typeof sp === 'string') {
+          return { text: sp };
+        }
+        return sp;
+      });
+    }
+    return result;
   });
 
   return {
     bullets,
     sentiment,
-    topMovers: { gainers, losers },
-    topTweets: grokIntel.topTweets || []
+    topMovers: { gainers, losers }
   };
 }
