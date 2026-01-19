@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     const { prices, password } = body as { prices: CoinData[]; password: string };
 
     // Validate password
-    const correctPassword = process.env.REPORT_PASSWORD;
+    const correctPassword = process.env.REPORT_PASSWORD?.trim();
     if (!correctPassword) {
       return NextResponse.json(
         { error: "Report generation is not configured" },
@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!password || password !== correctPassword) {
+    const trimmedPassword = password?.trim();
+    if (!trimmedPassword || trimmedPassword !== correctPassword) {
       return NextResponse.json(
         { error: "Invalid password" },
         { status: 401 }
