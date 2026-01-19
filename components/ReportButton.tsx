@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface ReportButtonProps {
   onClick: () => void;
@@ -12,24 +12,12 @@ export default function ReportButton({ onClick, isLoading }: ReportButtonProps) 
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Check if already authenticated on mount
-  useEffect(() => {
-    const auth = sessionStorage.getItem("reportAuth");
-    if (auth === "true") {
-      setIsAuthenticated(true);
-    }
-  }, []);
 
   const handleClick = () => {
-    if (isAuthenticated) {
-      onClick();
-    } else {
-      setShowPasswordModal(true);
-      setPassword("");
-      setError("");
-    }
+    // Always prompt for password on every click
+    setShowPasswordModal(true);
+    setPassword("");
+    setError("");
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -47,8 +35,6 @@ export default function ReportButton({ onClick, isLoading }: ReportButtonProps) 
       });
 
       if (response.ok) {
-        setIsAuthenticated(true);
-        sessionStorage.setItem("reportAuth", "true");
         setShowPasswordModal(false);
         setPassword("");
         onClick();
@@ -125,7 +111,7 @@ export default function ReportButton({ onClick, isLoading }: ReportButtonProps) 
       {showPasswordModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.85)" }}
         >
           <div
             className="card p-6 w-full max-w-sm mx-4"
