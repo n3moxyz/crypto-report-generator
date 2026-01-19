@@ -70,7 +70,23 @@ async function loadSampleReports(): Promise<{ samples: string[]; mostRecent: str
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const prices: CoinData[] = body.prices;
+    const { prices, password } = body as { prices: CoinData[]; password: string };
+
+    // Validate password
+    const correctPassword = process.env.REPORT_PASSWORD;
+    if (!correctPassword) {
+      return NextResponse.json(
+        { error: "Report generation is not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (!password || password !== correctPassword) {
+      return NextResponse.json(
+        { error: "Invalid password" },
+        { status: 401 }
+      );
+    }
 
     if (!prices || !Array.isArray(prices) || prices.length === 0) {
       return NextResponse.json(

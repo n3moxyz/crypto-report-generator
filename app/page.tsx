@@ -57,6 +57,11 @@ export default function Home() {
   const [hasReport, setHasReport] = useState(false);
   const [isMarketSummaryCollapsed, setIsMarketSummaryCollapsed] = useState(false);
 
+  // Password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
   useEffect(() => {
     refreshPrices();
   }, []);
@@ -74,13 +79,22 @@ export default function Home() {
       const data = await pricesResponse.json();
       setDisplayItems(data.displayItems);
       setAvailableCoins(data.availableCoins || []);
-      setTopMovers(data.topMovers || {
+      const newTopMovers = data.topMovers || {
         top50: { gainers: [], losers: [] },
         top100: { gainers: [], losers: [] },
         top200: { gainers: [], losers: [] },
         top300: { gainers: [], losers: [] },
-      });
+      };
+      setTopMovers(newTopMovers);
       setLastPriceUpdate(new Date());
+
+      // Also update market summary if it's been displayed
+      if (hasWhatsUp && whatsUpData) {
+        setWhatsUpData({
+          ...whatsUpData,
+          topMovers: newTopMovers,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to refresh prices");
     } finally {
@@ -137,7 +151,18 @@ export default function Home() {
     }
   };
 
+  const handleGenerateClick = () => {
+    setPasswordError("");
+    setShowPasswordModal(true);
+  };
+
   const generateReport = async () => {
+    if (!password) {
+      setPasswordError("Password is required");
+      return;
+    }
+
+    setShowPasswordModal(false);
     setIsLoading(true);
     setError("");
     setReport("");
@@ -161,17 +186,23 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prices: data.coins }),
+        body: JSON.stringify({ prices: data.coins, password }),
       });
 
       if (!reportResponse.ok) {
         const errorData = await reportResponse.json();
-        throw new Error(errorData.error || "Failed to generate report");
+        if (reportResponse.status === 401) {
+          setPassword("");
+          throw new Error("Invalid password");
+        }
+        throw new Error(errorData.error || "Failed to generate update");
       }
 
       const reportData = await reportResponse.json();
       setReport(reportData.report);
       setHasReport(true);
+      // Clear password after successful generation
+      setPassword("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -207,7 +238,7 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-primary">
-                Crypto Report Generator
+                Crypto - What's Up?
               </h1>
               <p className="text-muted flex items-center gap-1" style={{ fontSize: "var(--text-xs)" }}>
                 Liquid markets update with one click | Powered by{" "}
@@ -253,22 +284,6 @@ export default function Home() {
               <h2 className="font-bold text-primary" style={{ fontSize: "var(--text-base)" }}>
                 Current Prices
               </h2>
-              {lastPriceUpdate && (
-                <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
-                  {lastPriceUpdate.toLocaleTimeString()}
-                </span>
-              )}
-              <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
-                via{" "}
-                <a
-                  href="https://www.coingecko.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent hover:underline"
-                >
-                  CoinGecko
-                </a>
-              </span>
             </div>
             <div className="flex items-center gap-2">
               <CoinSelector
@@ -287,12 +302,8 @@ export default function Home() {
                 {displayItems.map((item) => (
                   <div key={item.id} className="data-cell">
                     <div className="flex items-center gap-1.5 mb-1">
-                      {item.image ? (
+                      {item.image && (
                         <img src={item.image} alt={item.name} className="w-4 h-4 rounded-full" />
-                      ) : (
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--accent)", fontSize: "8px", color: "white" }}>
-                          ⟠
-                        </div>
                       )}
                       <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
                         {item.symbol}
@@ -325,6 +336,25 @@ export default function Home() {
                 )}
               </div>
             )}
+            {/* CoinGecko attribution */}
+            <div className="mt-3 pt-3 flex items-center gap-2" style={{ borderTop: "1px solid var(--border-color)" }}>
+              <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
+                Prices via{" "}
+                <a
+                  href="https://www.coingecko.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  CoinGecko
+                </a>
+              </span>
+              {lastPriceUpdate && (
+                <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
+                  • {lastPriceUpdate.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           </div>
         </section>
 
@@ -335,7 +365,7 @@ export default function Home() {
               Actions
             </h2>
             <WhatsUpButton onClick={fetchWhatsUp} isLoading={isWhatsUpLoading} />
-            <ReportButton onClick={generateReport} isLoading={isLoading} />
+            <ReportButton onClick={handleGenerateClick} isLoading={isLoading} />
           </div>
         </section>
 
@@ -384,6 +414,7 @@ export default function Home() {
                   timestamp: ""
                 }}
                 isLoading={isWhatsUpLoading}
+                prices={displayItems}
               />
             )}
             {isMarketSummaryCollapsed && (
@@ -400,12 +431,94 @@ export default function Home() {
         {(hasReport || isLoading) && (
           <section className="mb-6">
             <h2 className="font-bold text-primary mb-3" style={{ fontSize: "var(--text-base)" }}>
-              Report
+              Weekly Update
             </h2>
             <ReportDisplay report={report} isLoading={isLoading} />
           </section>
         )}
       </main>
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => {
+              setShowPasswordModal(false);
+              setPassword("");
+              setPasswordError("");
+            }}
+          />
+          {/* Modal */}
+          <div className="card p-6 relative z-10 w-full max-w-sm mx-4">
+            <div className="flex items-center gap-2 mb-4">
+              <svg
+                className="w-5 h-5 text-accent"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              <h3 className="font-bold text-primary" style={{ fontSize: "var(--text-lg)" }}>
+                Password Required
+              </h3>
+            </div>
+            <p className="text-secondary mb-4" style={{ fontSize: "var(--text-sm)" }}>
+              Enter the password to generate the update.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                generateReport();
+              }}
+            >
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError("");
+                }}
+                placeholder="Enter password"
+                className="w-full px-3 py-2 rounded mb-2 text-primary bg-tertiary"
+                style={{
+                  fontSize: "var(--text-sm)",
+                  border: passwordError ? "1px solid var(--danger)" : "1px solid var(--border-color)",
+                }}
+                autoFocus
+              />
+              {passwordError && (
+                <p className="text-sm mb-3" style={{ color: "var(--danger)" }}>
+                  {passwordError}
+                </p>
+              )}
+              <div className="flex gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPassword("");
+                    setPasswordError("");
+                  }}
+                  className="btn btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary flex-1">
+                  Generate
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

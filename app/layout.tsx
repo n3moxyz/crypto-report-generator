@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Crypto Market Report Generator",
+  title: "Crypto - What's Up?",
   description: "Liquid markets update with one click",
 };
 

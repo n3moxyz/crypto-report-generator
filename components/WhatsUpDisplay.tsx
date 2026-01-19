@@ -40,6 +40,12 @@ const TIER_OPTIONS: { value: TopMoverTier; label: string }[] = [
 export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps) {
   const [selectedTier, setSelectedTier] = useState<TopMoverTier>("top100");
 
+  const formatPrice = (price: number) => {
+    if (price >= 1000) return `$${(price / 1000).toFixed(1)}k`;
+    if (price >= 1) return `$${price.toFixed(2)}`;
+    return `$${price.toFixed(4)}`;
+  };
+
   if (isLoading) {
     return (
       <div className="card p-6">
@@ -64,12 +70,6 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
   };
 
   const sentiment = sentimentConfig[data.sentiment] || sentimentConfig.neutral;
-
-  const formatPrice = (price: number) => {
-    if (price >= 1000) return `$${(price / 1000).toFixed(1)}k`;
-    if (price >= 1) return `$${price.toFixed(2)}`;
-    return `$${price.toFixed(4)}`;
-  };
 
   return (
     <div className="card p-5">
@@ -144,8 +144,8 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
                   <span className="font-medium" style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)" }}>
                     {item.symbol}
                   </span>
-                  <span className="text-muted hidden sm:inline" style={{ fontSize: "var(--text-xs)" }}>
-                    {item.name}
+                  <span className="text-muted font-mono" style={{ fontSize: "var(--text-xs)" }}>
+                    {formatPrice(item.price)}
                   </span>
                 </div>
                 <span className="font-mono font-semibold" style={{ fontSize: "var(--text-sm)", color: "var(--success)" }}>
@@ -177,8 +177,8 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
                   <span className="font-medium" style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)" }}>
                     {item.symbol}
                   </span>
-                  <span className="text-muted hidden sm:inline" style={{ fontSize: "var(--text-xs)" }}>
-                    {item.name}
+                  <span className="text-muted font-mono" style={{ fontSize: "var(--text-xs)" }}>
+                    {formatPrice(item.price)}
                   </span>
                 </div>
                 <span className="font-mono font-semibold" style={{ fontSize: "var(--text-sm)", color: "var(--danger)" }}>
