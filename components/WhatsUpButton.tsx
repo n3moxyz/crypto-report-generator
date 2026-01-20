@@ -32,7 +32,7 @@ export default function WhatsUpButton({ onClick, isLoading }: WhatsUpButtonProps
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password: accessCode }),
+        body: JSON.stringify({ password: accessCode, type: "whatsup" }),
       });
 
       if (response.ok) {

@@ -101,7 +101,7 @@ export default function Home() {
       // Refresh whatsup if it was displayed
       if (hasWhatsUp) {
         try {
-          const whatsUpResponse = await fetch("/api/whatsup");
+          const whatsUpResponse = await fetch("/api/whatsup?refresh=true");
           if (whatsUpResponse.ok) {
             const whatsUpResult = await whatsUpResponse.json();
             setWhatsUpData({
@@ -197,7 +197,7 @@ export default function Home() {
       const coinsParam = selectedCoins.join(",");
       const [pricesResponse, whatsUpResponse] = await Promise.all([
         fetch(`/api/prices?coins=${coinsParam}`),
-        fetch("/api/whatsup"),
+        fetch("/api/whatsup?refresh=true"),
       ]);
 
       if (!pricesResponse.ok) {

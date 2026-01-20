@@ -27,16 +27,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Check for cached data first
-    const cached = await getCachedWhatsUp();
+    // Check if refresh is requested
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get("refresh") === "true";
 
-    if (cached) {
-      return NextResponse.json({
-        ...cached.data,
-        timestamp: cached.timestamp,
-        cached: true,
-        cacheAge: getCacheAge(cached),
-      });
+    // Check for cached data first (unless refresh is forced)
+    if (!forceRefresh) {
+      const cached = await getCachedWhatsUp();
+
+      if (cached) {
+        return NextResponse.json({
+          ...cached.data,
+          timestamp: cached.timestamp,
+          cached: true,
+          cacheAge: getCacheAge(cached),
+        });
+      }
     }
 
     // No valid cache, generate fresh data
