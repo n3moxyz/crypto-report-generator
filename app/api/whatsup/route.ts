@@ -1,8 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { generateWhatsUp } from "@/lib/openai";
 import { getCachedWhatsUp, setCachedWhatsUp, getCacheAge } from "@/lib/cache";
+import { checkRateLimit } from "@/lib/rateLimit";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Check rate limit
+  const rateLimitResult = checkRateLimit(request);
+
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too many requests. Please try again later.",
+        retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000),
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(
+            Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+          ),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(rateLimitResult.resetTime),
+        },
+      }
+    );
+  }
+
   try {
     // Check for cached data first
     const cached = await getCachedWhatsUp();
