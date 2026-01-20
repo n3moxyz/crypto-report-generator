@@ -8,7 +8,7 @@ export default function WhatsUpButton({ onClick, isLoading }: WhatsUpButtonProps
     <button
       onClick={onClick}
       disabled={isLoading}
-      className="btn btn-secondary"
+      className="btn btn-primary"
     >
       {isLoading ? (
         <>

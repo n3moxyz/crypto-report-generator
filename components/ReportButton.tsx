@@ -64,7 +64,7 @@ export default function ReportButton({ onClick, isLoading, onAuthenticated }: Re
       <button
         onClick={handleClick}
         disabled={isLoading}
-        className="btn btn-primary"
+        className="btn btn-secondary"
       >
         {isLoading ? (
           <>
@@ -115,11 +115,15 @@ export default function ReportButton({ onClick, isLoading, onAuthenticated }: Re
       {showPasswordModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.85)" }}
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.92)" }}
         >
           <div
             className="card p-6 w-full max-w-sm mx-4"
-            style={{ backgroundColor: "var(--bg-secondary)" }}
+            style={{
+              backgroundColor: "var(--bg-primary)",
+              border: "1px solid var(--border-color)",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
+            }}
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-primary" style={{ fontSize: "var(--text-lg)" }}>
