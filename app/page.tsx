@@ -294,6 +294,7 @@ export default function Home() {
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ backgroundColor: "var(--accent)" }}
+              aria-hidden="true"
             >
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -318,6 +319,8 @@ export default function Home() {
                       src="https://unavatar.io/twitter/cptn3mox"
                       alt="cptn3mox"
                       className="w-4 h-4 rounded-full"
+                      width={16}
+                      height={16}
                     />
                     @cptn3mox
                   </a>
@@ -370,7 +373,7 @@ export default function Home() {
                   <div key={item.id} className="data-cell">
                     <div className="flex items-center gap-1.5 mb-1">
                       {item.image && (
-                        <img src={item.image} alt={item.name} className="w-4 h-4 rounded-full" />
+                        <img src={item.image} alt={item.name} className="w-4 h-4 rounded-full" width={16} height={16} />
                       )}
                       <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
                         {item.symbol}
@@ -448,6 +451,8 @@ export default function Home() {
                   onClick={() => setIsMarketSummaryCollapsed(!isMarketSummaryCollapsed)}
                   className="btn-ghost flex items-center gap-1"
                   style={{ fontSize: "var(--text-xs)" }}
+                  aria-expanded={!isMarketSummaryCollapsed}
+                  aria-label={isMarketSummaryCollapsed ? "Expand market summary" : "Collapse market summary"}
                 >
                   {isMarketSummaryCollapsed ? (
                     <>
@@ -506,6 +511,8 @@ export default function Home() {
                   onClick={() => setIsReportCollapsed(!isReportCollapsed)}
                   className="btn-ghost flex items-center gap-1"
                   style={{ fontSize: "var(--text-xs)" }}
+                  aria-expanded={!isReportCollapsed}
+                  aria-label={isReportCollapsed ? "Expand weekly update" : "Collapse weekly update"}
                 >
                   {isReportCollapsed ? (
                     <>

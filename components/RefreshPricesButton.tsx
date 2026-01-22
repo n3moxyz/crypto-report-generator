@@ -10,6 +10,7 @@ export default function RefreshPricesButton({ onClick, isLoading }: RefreshPrice
       disabled={isLoading}
       className="btn btn-secondary flex items-center gap-1.5"
       style={{ fontSize: "var(--text-xs)", padding: "6px 12px" }}
+      aria-label={isLoading ? "Refreshing prices" : "Refresh prices"}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

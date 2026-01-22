@@ -278,6 +278,8 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
                     : "bg-tertiary text-secondary hover:bg-hover"
                 }`}
                 style={{ fontSize: "var(--text-xs)" }}
+                aria-label={`Show movers from ${option.label}`}
+                aria-pressed={selectedTier === option.value}
               >
                 {option.label}
               </button>

@@ -65,6 +65,8 @@ export default function CoinSelector({
         onClick={() => setIsOpen(!isOpen)}
         className="btn-ghost flex items-center gap-1"
         style={{ fontSize: "var(--text-xs)" }}
+        aria-label={`Select coins, ${selectedCoins.length} of ${maxSelection} selected`}
+        aria-expanded={isOpen}
       >
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -90,6 +92,8 @@ export default function CoinSelector({
               className="w-full px-2 py-1.5 rounded text-primary bg-tertiary"
               style={{ fontSize: "var(--text-xs)", border: "1px solid var(--border-color)" }}
               autoFocus
+              autoComplete="off"
+              aria-label="Search coins"
             />
           </div>
 
@@ -101,6 +105,7 @@ export default function CoinSelector({
                 onClick={() => onSelectionChange([])}
                 className="text-accent hover:underline"
                 style={{ fontSize: "var(--text-xs)" }}
+                aria-label="Clear all coin selections"
               >
                 Clear All
               </button>

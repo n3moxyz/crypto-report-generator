@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Crypto - What's Up?",
   description: "Liquid markets update with one click",
+  other: {
+    "color-scheme": "light dark",
+  },
 };
 
 export default function RootLayout({

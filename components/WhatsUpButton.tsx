@@ -129,6 +129,7 @@ export default function WhatsUpButton({ onClick, isLoading }: WhatsUpButtonProps
               <button
                 onClick={handleCloseModal}
                 className="text-muted hover:text-primary transition-colors"
+                aria-label="Close access code modal"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -154,11 +155,14 @@ export default function WhatsUpButton({ onClick, isLoading }: WhatsUpButtonProps
                     fontSize: "var(--text-base)",
                   }}
                   autoFocus
+                  autoComplete="off"
+                  aria-label="Access code"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCode(!showCode)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors"
+                  aria-label={showCode ? "Hide access code" : "Show access code"}
                 >
                   {showCode ? (
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

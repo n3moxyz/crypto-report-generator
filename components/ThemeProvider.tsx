@@ -28,7 +28,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (mounted) {
       document.documentElement.setAttribute("data-theme", theme);
+      document.documentElement.style.colorScheme = theme;
       localStorage.setItem("theme", theme);
+
+      // Update theme-color meta tag for browser UI
+      const themeColor = theme === "dark" ? "#0d1117" : "#f8fafc";
+      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (!metaThemeColor) {
+        metaThemeColor = document.createElement("meta");
+        metaThemeColor.setAttribute("name", "theme-color");
+        document.head.appendChild(metaThemeColor);
+      }
+      metaThemeColor.setAttribute("content", themeColor);
     }
   }, [theme, mounted]);
 
