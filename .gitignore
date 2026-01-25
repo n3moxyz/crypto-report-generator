@@ -43,3 +43,7 @@ next-env.d.ts
 .vercel
 .env*.local
 .cache
+
+# Claude Code workspace
+.claude/
+_ul*
