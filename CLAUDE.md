@@ -37,9 +37,28 @@ Crypto market intelligence app combining real-time prices, AI analysis, and Tele
 - `lib/telegram/` - Bot commands and handlers
 - `components/WhatsUpDisplay.tsx` - Market overview with interactive follow-up chat
 
+## First Run Setup
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Create environment file
+cp .env.local.example .env.local
+
+# 3. Fill in your API keys in .env.local:
+#    - ANTHROPIC_API_KEY (Claude)
+#    - OPENAI_API_KEY
+#    - XAI_API_KEY (Grok)
+#    - TELEGRAM_BOT_TOKEN
+
+# 4. Start dev server
+npm run dev
+```
+
 ## Commands
 ```bash
-npm run dev      # Start dev server
+npm run dev      # Start dev server (http://localhost:3000)
 npm run build    # Production build
 npm run lint     # Run ESLint
 ```
