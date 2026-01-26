@@ -86,7 +86,7 @@ export default function CoinSelector({
           <div className="p-2 border-b" style={{ borderColor: "var(--border-color)" }}>
             <input
               type="text"
-              placeholder="Search coins..."
+              placeholder="Search coins…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-2 py-1.5 rounded text-primary bg-tertiary"
@@ -141,7 +141,7 @@ export default function CoinSelector({
                     )}
                   </div>
                   {coin.image && (
-                    <img src={coin.image} alt={coin.name} className="w-4 h-4 rounded-full flex-shrink-0" />
+                    <img src={coin.image} alt={coin.name} className="w-4 h-4 rounded-full flex-shrink-0" width={16} height={16} loading="lazy" />
                   )}
                   <span className="text-secondary font-medium uppercase" style={{ width: "40px" }}>
                     {coin.symbol}

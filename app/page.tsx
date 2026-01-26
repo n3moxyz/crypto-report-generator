@@ -278,10 +278,13 @@ export default function Home() {
       return item.current_price;
     }
     const price = item.current_price as number;
-    if (price >= 1000) {
-      return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-    }
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatter = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: price >= 1000 ? 0 : 2,
+      maximumFractionDigits: price >= 1000 ? 0 : 2,
+    });
+    return formatter.format(price);
   };
 
   return (
@@ -302,7 +305,7 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-primary">
-                Crypto - What's Up?
+                Crypto - What&apos;s Up?
               </h1>
               <p className="header-subtitle text-muted flex items-center gap-1" style={{ fontSize: "var(--text-xs)" }}>
                 <span>Liquid markets update with one click</span>
@@ -321,6 +324,7 @@ export default function Home() {
                       className="w-4 h-4 rounded-full"
                       width={16}
                       height={16}
+                      loading="lazy"
                     />
                     @cptn3mox
                   </a>
@@ -340,7 +344,7 @@ export default function Home() {
             className="card p-3 mb-5 flex items-center gap-2"
             style={{ borderColor: "var(--danger)", backgroundColor: "var(--danger-bg)" }}
           >
-            <svg className="w-4 h-4 flex-shrink-0" style={{ color: "var(--danger)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 flex-shrink-0" style={{ color: "var(--danger)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-sm" style={{ color: "var(--danger)" }}>{error}</span>
@@ -373,7 +377,7 @@ export default function Home() {
                   <div key={item.id} className="data-cell">
                     <div className="flex items-center gap-1.5 mb-1">
                       {item.image && (
-                        <img src={item.image} alt={item.name} className="w-4 h-4 rounded-full" width={16} height={16} />
+                        <img src={item.image} alt={item.name} className="w-4 h-4 rounded-full" width={16} height={16} loading="lazy" />
                       )}
                       <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
                         {item.symbol}
@@ -421,7 +425,7 @@ export default function Home() {
               </span>
               {lastPriceUpdate && (
                 <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
-                  • {lastPriceUpdate.toLocaleTimeString()}
+                  • {new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "numeric", second: "numeric" }).format(lastPriceUpdate)}
                 </span>
               )}
             </div>
@@ -465,7 +469,7 @@ export default function Home() {
                     <div className="flex items-start gap-2">
                       <span className="text-accent font-medium" style={{ fontSize: "var(--text-xs)" }}>1.</span>
                       <p className="text-secondary" style={{ fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
-                        Press <span className="font-medium text-accent">What's Up?</span> to get the latest market summary (24-48h)
+                        Press <span className="font-medium text-accent">What&apos;s Up?</span> to get the latest market summary (24-48h)
                       </p>
                     </div>
                     <div className="flex items-start gap-2">
@@ -508,14 +512,14 @@ export default function Home() {
                 >
                   {isMarketSummaryCollapsed ? (
                     <>
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                       Show More
                     </>
                   ) : (
                     <>
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                       </svg>
                       Collapse
@@ -544,7 +548,7 @@ export default function Home() {
             {isMarketSummaryCollapsed && (
               <div className="card p-3 text-center">
                 <span className="text-muted" style={{ fontSize: "var(--text-sm)" }}>
-                  Market summary collapsed. Click "Show More" to expand.
+                  Market summary collapsed. Click &quot;Show More&quot; to expand.
                 </span>
               </div>
             )}
@@ -568,14 +572,14 @@ export default function Home() {
                 >
                   {isReportCollapsed ? (
                     <>
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                       Show More
                     </>
                   ) : (
                     <>
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                       </svg>
                       Collapse
@@ -590,7 +594,7 @@ export default function Home() {
             {isReportCollapsed && (
               <div className="card p-3 text-center">
                 <span className="text-muted" style={{ fontSize: "var(--text-sm)" }}>
-                  Weekly update collapsed. Click "Show More" to expand.
+                  Weekly update collapsed. Click &quot;Show More&quot; to expand.
                 </span>
               </div>
             )}

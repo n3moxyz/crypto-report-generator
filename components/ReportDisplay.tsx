@@ -85,15 +85,15 @@ export default function ReportDisplay({ report, isLoading }: ReportDisplayProps)
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-primary font-mono font-semibold" style={{ fontSize: "var(--text-lg)" }}>
-                {timeRemaining > 0 ? formatTime(timeRemaining) : "..."}
+                {timeRemaining > 0 ? formatTime(timeRemaining) : "…"}
               </span>
             </div>
           </div>
           <p className="text-secondary mb-1" style={{ fontSize: "var(--text-sm)" }}>
-            Generating weekly update...
+            Generating weekly update…
           </p>
           <p className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
-            {timeRemaining > 0 ? "Estimated time remaining" : "Almost done, finalizing..."}
+            {timeRemaining > 0 ? "Estimated time remaining" : "Almost done, finalizing…"}
           </p>
         </div>
       </div>
@@ -113,14 +113,14 @@ export default function ReportDisplay({ report, isLoading }: ReportDisplayProps)
         >
           {copied ? (
             <>
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               Copied
             </>
           ) : (
             <>
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
               Copy

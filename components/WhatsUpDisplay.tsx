@@ -6,13 +6,13 @@ const ESTIMATED_TIME = 45; // Estimated seconds for market summary
 
 // Loading messages that cycle during the countdown
 const LOADING_MESSAGES = [
-  { text: "Scanning X/Twitter for market chatter...", icon: "🔍" },
-  { text: "Analyzing price movements...", icon: "📊" },
-  { text: "Reading crypto news feeds...", icon: "📰" },
-  { text: "Checking whale activity...", icon: "🐋" },
-  { text: "Evaluating market sentiment...", icon: "🎯" },
-  { text: "Compiling intelligence report...", icon: "📝" },
-  { text: "Almost there, finalizing...", icon: "✨" },
+  { text: "Scanning X/Twitter for market chatter…", icon: "🔍" },
+  { text: "Analyzing price movements…", icon: "📊" },
+  { text: "Reading crypto news feeds…", icon: "📰" },
+  { text: "Checking whale activity…", icon: "🐋" },
+  { text: "Evaluating market sentiment…", icon: "🎯" },
+  { text: "Compiling intelligence report…", icon: "📝" },
+  { text: "Almost there, finalizing…", icon: "✨" },
 ];
 
 // Chat message interface
@@ -314,7 +314,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
               className="text-primary font-mono font-semibold"
               style={{ fontSize: "var(--text-2xl)" }}
             >
-              {timeRemaining > 0 ? formatTime(timeRemaining) : "..."}
+              {timeRemaining > 0 ? formatTime(timeRemaining) : "…"}
             </span>
             <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
               remaining
@@ -475,6 +475,8 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
                     opacity: isPreloading && !hasElaboration ? 0.5 : 1,
                   }}
                   disabled={isPreloading && !hasElaboration}
+                  aria-expanded={isExpanded}
+                  aria-label={isExpanded ? "Show less details" : "Tell me more about this point"}
                 >
                   <span
                     className="transition-transform duration-200 inline-block not-italic"
@@ -487,7 +489,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
                   </span>
                   <span className="hover:underline">
                     {isPreloading && !hasElaboration
-                      ? "Loading details..."
+                      ? "Loading details…"
                       : isExpanded
                       ? "Show less"
                       : "Tell me more"}
@@ -544,6 +546,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
               onClick={() => setChatMessages([])}
               className="text-muted hover:text-secondary transition-colors"
               style={{ fontSize: "var(--text-xs)" }}
+              aria-label="Clear chat history"
             >
               Clear chat
             </button>
@@ -617,7 +620,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            placeholder="e.g. Why is sentiment bearish? What's driving BTC?"
+            placeholder="e.g. Why is sentiment bearish? What's driving BTC…"
             disabled={isChatLoading}
             className="flex-1 rounded-lg px-3 py-2 text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             style={{
@@ -758,7 +761,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
       {/* Timestamp */}
       {data.timestamp && (
         <div className="text-muted mt-4 text-right" style={{ fontSize: "var(--text-xs)" }}>
-          {new Date(data.timestamp).toLocaleString()}
+          {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(data.timestamp))}
         </div>
       )}
     </div>
