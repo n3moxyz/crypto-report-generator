@@ -49,3 +49,4 @@ next-env.d.ts
 # Claude Code workspace
 .claude/
 _ul*
+tests/screenshots/
