@@ -8,6 +8,53 @@ import {
   formatErrorMessage,
 } from "../formatters";
 import { getWhatsUpKeyboard } from "../keyboards";
+import { Api } from "grammy";
+
+// Retry helper with exponential backoff
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 1000
+): Promise<T> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`Attempt ${attempt}/${maxAttempts} failed:`, lastError.message);
+
+      if (attempt < maxAttempts) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+// Send result with retry, fallback to new message if edit fails
+async function sendResultWithRetry(
+  api: Api,
+  chatId: number,
+  messageId: number,
+  content: string,
+  options: { parse_mode: "HTML"; reply_markup?: ReturnType<typeof getWhatsUpKeyboard> }
+): Promise<void> {
+  try {
+    await withRetry(() => api.editMessageText(chatId, messageId, content, options));
+  } catch (editError) {
+    console.error("All edit attempts failed, sending new message:", editError);
+    // Fallback: send a new message instead
+    try {
+      await api.sendMessage(chatId, content, options);
+    } catch (sendError) {
+      console.error("Fallback send also failed:", sendError);
+    }
+  }
+}
 
 async function getWhatsUpData(): Promise<import("@/lib/openai").WhatsUpData> {
   // Skip cache in development for testing
@@ -48,7 +95,7 @@ export async function handleWhatsUp(ctx: BotContext): Promise<void> {
     try {
       const data = await getWhatsUpData();
 
-      await api.editMessageText(chatId, messageId, formatWhatsUpMessage(data), {
+      await sendResultWithRetry(api, chatId, messageId, formatWhatsUpMessage(data), {
         parse_mode: "HTML",
         reply_markup: getWhatsUpKeyboard(),
       });
@@ -57,7 +104,7 @@ export async function handleWhatsUp(ctx: BotContext): Promise<void> {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to generate market summary";
 
-      await api.editMessageText(chatId, messageId, formatErrorMessage(errorMessage), {
+      await sendResultWithRetry(api, chatId, messageId, formatErrorMessage(errorMessage), {
         parse_mode: "HTML",
       });
     }
@@ -86,7 +133,7 @@ export async function handleWhatsUpCallback(
     try {
       const data = await getWhatsUpData();
 
-      await api.editMessageText(chatId, messageId, formatWhatsUpMessage(data), {
+      await sendResultWithRetry(api, chatId, messageId, formatWhatsUpMessage(data), {
         parse_mode: "HTML",
         reply_markup: getWhatsUpKeyboard(),
       });
@@ -95,7 +142,7 @@ export async function handleWhatsUpCallback(
       const errorMessage =
         error instanceof Error ? error.message : "Failed to generate market summary";
 
-      await api.editMessageText(chatId, messageId, formatErrorMessage(errorMessage), {
+      await sendResultWithRetry(api, chatId, messageId, formatErrorMessage(errorMessage), {
         parse_mode: "HTML",
       });
     }
