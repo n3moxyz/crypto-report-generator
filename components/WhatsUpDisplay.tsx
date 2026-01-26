@@ -69,16 +69,19 @@ const TIER_OPTIONS: { value: TopMoverTier; label: string }[] = [
   { value: "top300", label: "Top 300" },
 ];
 
+// Hoisted regex for performance - avoids recreation on every formatText call
+// Matches: "BTC $89k", "ETH $3.2k", "SOL $240", "BTC: $89k", "BTC at $89k"
+// Does NOT match: "$891k inflows", "$10 billion", "absorbed $345M"
+const TICKER_PRICE_PATTERN = /\b(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|DOT|MATIC|AVAX|LINK|UNI|ATOM|LTC|BCH|XLM|ALGO|VET|FIL|THETA|ICP|TRX|ETC|XMR|AAVE|GRT|MKR|SNX|COMP|YFI|SUSHI|CRV|BAL|REN|KNC|LRC|ZRX|ENJ|MANA|SAND|AXS|CHZ|GALA|IMX|APE|OP|ARB|BLUR|PEPE|WLD|SUI|SEI|TIA|JUP|STRK|PENDLE|Bitcoin|Ethereum|Solana)(?:\s*[:@]?\s*|\s+at\s+)(\$[\d,.]+k?)\b/gi;
+
 // Helper to format text with crypto prices (purple) - ONLY when preceded by ticker
 const formatText = (text: string) => {
   let formatted = text;
 
-  // Color crypto token prices in purple ONLY when directly preceded by a ticker symbol
-  // Matches: "BTC $89k", "ETH $3.2k", "SOL $240", "BTC: $89k", "BTC at $89k"
-  // Does NOT match: "$891k inflows", "$10 billion", "absorbed $345M"
-  const tickerPattern = /\b(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|DOT|MATIC|AVAX|LINK|UNI|ATOM|LTC|BCH|XLM|ALGO|VET|FIL|THETA|ICP|TRX|ETC|XMR|AAVE|GRT|MKR|SNX|COMP|YFI|SUSHI|CRV|BAL|REN|KNC|LRC|ZRX|ENJ|MANA|SAND|AXS|CHZ|GALA|IMX|APE|OP|ARB|BLUR|PEPE|WLD|SUI|SEI|TIA|JUP|STRK|PENDLE|Bitcoin|Ethereum|Solana)(?:\s*[:@]?\s*|\s+at\s+)(\$[\d,.]+k?)\b/gi;
+  // Reset lastIndex since we're reusing a global regex
+  TICKER_PRICE_PATTERN.lastIndex = 0;
 
-  formatted = formatted.replace(tickerPattern, (match, ticker, price) => {
+  formatted = formatted.replace(TICKER_PRICE_PATTERN, (match, ticker, price) => {
     return `${ticker} <span style="color: #a78bfa; font-weight: 500;">${price}</span>`;
   });
 
