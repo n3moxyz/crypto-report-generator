@@ -100,23 +100,35 @@ export async function fetchTop300Coins(): Promise<CoinData[]> {
   return [...coins1, ...coins2];
 }
 
-// Fetch specific coins by IDs
-export async function fetchSpecificCoins(coinIds?: string[]): Promise<CoinData[]> {
+// Fetch specific coins by IDs with retry for rate limits
+export async function fetchSpecificCoins(coinIds?: string[], maxRetries = 3): Promise<CoinData[]> {
   const ids = coinIds && coinIds.length > 0 ? coinIds.join(",") : DEFAULT_COIN_IDS.join(",");
 
-  const response = await fetch(
-    `${COINGECKO_API}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h,7d`,
-    {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 60 },
-    }
-  );
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(
+      `${COINGECKO_API}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h,7d`,
+      {
+        headers: { Accept: "application/json" },
+        next: { revalidate: 60 },
+      }
+    );
 
-  if (!response.ok) {
+    if (response.ok) {
+      return response.json();
+    }
+
+    // Retry on rate limit (429)
+    if (response.status === 429 && attempt < maxRetries - 1) {
+      const waitTime = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
+      console.log(`CoinGecko rate limited, retrying in ${waitTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      continue;
+    }
+
     throw new Error(`CoinGecko API error: ${response.status}`);
   }
 
-  return response.json();
+  throw new Error("CoinGecko API: max retries exceeded");
 }
 
 // Get top gainers and losers from top 100

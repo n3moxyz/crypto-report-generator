@@ -171,12 +171,6 @@ ACCURACY FIRST. Empty arrays are better than made-up information. Provide analyt
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        search_parameters: {
-          mode: "auto",
-          return_citations: false,
-          from_date: getDateDaysAgo(2),
-          to_date: getTodayDate(),
-        },
         temperature: 0.3,
       }),
     });
