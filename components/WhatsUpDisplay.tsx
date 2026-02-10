@@ -649,9 +649,9 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            placeholder="e.g. Why is sentiment bearish? What's driving BTC…"
+            placeholder="e.g. Why bearish? What's driving BTC?"
             disabled={isChatLoading}
-            className="flex-1 rounded-lg px-3 py-2 text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="flex-1 rounded-lg px-3 py-2.5 text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             style={{
               fontSize: "var(--text-sm)",
               backgroundColor: "var(--bg-secondary)",
@@ -683,7 +683,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
               <button
                 key={suggestion}
                 onClick={() => setChatInput(suggestion)}
-                className="px-2 py-1 rounded-md text-muted hover:text-secondary hover:bg-[var(--bg-secondary)] transition-colors"
+                className="px-3 py-1.5 rounded-md text-muted hover:text-secondary hover:bg-[var(--bg-secondary)] transition-colors"
                 style={{ fontSize: "var(--text-xs)", border: "1px solid var(--border-color)" }}
               >
                 {suggestion}

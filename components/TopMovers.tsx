@@ -28,12 +28,12 @@ export default function TopMovers({ topMovers }: TopMoversProps) {
       {/* Tier Toggle */}
       <div className="flex items-center gap-2 mb-3">
         <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>Show movers from:</span>
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {TIER_OPTIONS.map((option) => (
             <button
               key={option.value}
               onClick={() => setSelectedTier(option.value)}
-              className={`px-2 py-1 rounded transition-colors ${
+              className={`px-2 py-1 rounded transition-colors flex-shrink-0 ${
                 selectedTier === option.value
                   ? "bg-[var(--accent)] text-white"
                   : "bg-tertiary text-secondary hover:bg-hover"
@@ -59,8 +59,8 @@ export default function TopMovers({ topMovers }: TopMoversProps) {
           </div>
           <div className="space-y-2.5">
             {(topMovers[selectedTier]?.gainers || []).slice(0, 5).map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div key={index} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="text-muted" style={{ fontSize: "var(--text-xs)", width: "16px" }}>
                     {index + 1}.
                   </span>
@@ -92,8 +92,8 @@ export default function TopMovers({ topMovers }: TopMoversProps) {
           </div>
           <div className="space-y-2.5">
             {(topMovers[selectedTier]?.losers || []).slice(0, 5).map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div key={index} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="text-muted" style={{ fontSize: "var(--text-xs)", width: "16px" }}>
                     {index + 1}.
                   </span>

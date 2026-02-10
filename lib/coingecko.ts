@@ -11,6 +11,7 @@ export interface CoinData {
   total_volume: number;
   high_24h: number;
   low_24h: number;
+  sparkline_in_7d?: { price: number[] };
 }
 
 export interface DisplayItem {
@@ -21,6 +22,7 @@ export interface DisplayItem {
   current_price: number | string;
   price_change_percentage_24h: number | null;
   isRatio?: boolean;
+  sparkline?: number[];
 }
 
 export interface TopMover {
@@ -106,7 +108,7 @@ export async function fetchSpecificCoins(coinIds?: string[], maxRetries = 3): Pr
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const response = await fetch(
-      `${COINGECKO_API}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h,7d`,
+      `${COINGECKO_API}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=true&price_change_percentage=24h,7d`,
       {
         headers: { Accept: "application/json" },
         next: { revalidate: 60 },
@@ -183,6 +185,7 @@ export function getDisplayItems(coins: CoinData[], selectedIds?: string[]): Disp
     image: coin.image,
     current_price: coin.current_price,
     price_change_percentage_24h: coin.price_change_percentage_24h,
+    sparkline: coin.sparkline_in_7d?.price,
   }));
 
   // Add ETH/BTC ratio if both are selected

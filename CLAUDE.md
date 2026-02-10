@@ -17,24 +17,22 @@
 > Keep the engaging, conversational tone. Use analogies where helpful. This is a learning document, not dry documentation.
 
 ## Project Overview
-Crypto market intelligence app combining real-time prices, AI analysis, and Telegram bot delivery.
+Crypto market intelligence app combining real-time prices and AI analysis.
 
 ## Tech Stack
 - **Framework**: Next.js 16 + React 19 + TypeScript
 - **Styling**: Tailwind CSS 4
 - **AI**: Claude API (reports), OpenAI/Grok (market summaries)
 - **Data**: CoinGecko API (prices)
-- **Bot**: Grammy (Telegram)
 - **Deploy**: Vercel
 
 ## Key Files
 - `app/page.tsx` - Main UI
-- `app/api/` - API routes (generate, prices, whatsup, whatsup/followup, telegram, cron)
+- `app/api/` - API routes (generate, prices, whatsup, whatsup/followup, cron)
 - `lib/claude.ts` - Report generation
 - `lib/openai.ts` - Market summary generation
 - `lib/coingecko.ts` - Price fetching
 - `lib/grok.ts` - X/Twitter intelligence
-- `lib/telegram/` - Bot commands and handlers
 - `components/WhatsUpDisplay.tsx` - Market overview with interactive follow-up chat
 
 ## First Run Setup
@@ -50,7 +48,6 @@ cp .env.local.example .env.local
 #    - ANTHROPIC_API_KEY (Claude)
 #    - OPENAI_API_KEY
 #    - XAI_API_KEY (Grok)
-#    - TELEGRAM_BOT_TOKEN
 
 # 4. Start dev server
 npm run dev
@@ -80,7 +77,7 @@ taskkill /F /IM node.exe
 ```
 
 ## Architecture
-1. User requests via web UI or Telegram bot
+1. User requests via web UI
 2. Prices fetched from CoinGecko
 3. Market intelligence from Grok (X/Twitter)
 4. Claude/OpenAI generates analysis
@@ -103,9 +100,13 @@ taskkill /F /IM node.exe
 - **Animated loading**: Countdown timer with rotating status messages during data fetch
 - **Text formatting**: Crypto prices are highlighted in purple when preceded by ticker symbols (e.g., "BTC $89k")
 
+### Price Cards
+- **7-day sparklines**: Inline SVG polyline charts showing 7-day price trend (green=up, red=down)
+- **Auto-refresh**: 60-second interval refreshes prices only (not AI summary). Countdown shown in refresh button
+- **Sparkline data**: Enabled only on `fetchSpecificCoins()` (display coins), kept OFF for bulk fetches
+
 ## Environment Variables
 Required in `.env.local`:
 - `ANTHROPIC_API_KEY`
 - `OPENAI_API_KEY`
-- `TELEGRAM_BOT_TOKEN`
 - `XAI_API_KEY` (Grok)

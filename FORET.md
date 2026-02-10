@@ -12,7 +12,7 @@ Imagine having a financial analyst friend who never sleeps, constantly scrolls C
 1. Fetches real-time cryptocurrency prices
 2. Scans the last 48 hours of Crypto Twitter via Grok (X's AI)
 3. Synthesizes everything through Claude to generate actionable insights
-4. Delivers reports via web interface AND Telegram bot
+4. Delivers reports via an interactive web interface
 
 It's not just a price tracker. It's a *reasoning engine* that connects the dots between market movements and the narratives driving them.
 
@@ -37,11 +37,11 @@ Here's where it gets interesting. This project uses **three different AI systems
                          └────────┬────────┘
                                   │
                     ┌─────────────┼─────────────┐
-                    │             │             │
-              ┌─────▼─────┐ ┌─────▼─────┐ ┌─────▼─────┐
-              │    Web    │ │  Telegram │ │   Cache   │
-              │    UI     │ │    Bot    │ │  (24hr)   │
-              └───────────┘ └───────────┘ └───────────┘
+                    │                           │
+              ┌─────▼─────┐               ┌─────▼─────┐
+              │    Web    │               │   Cache   │
+              │    UI     │               │  (24hr)   │
+              └───────────┘               └───────────┘
 ```
 
 ### Why Three AIs?
@@ -65,7 +65,6 @@ crypto-report-generator/
 │   │   ├── whatsup/route.ts          # Main market summary endpoint
 │   │   ├── whatsup/followup/route.ts # Interactive Q&A
 │   │   ├── prices/route.ts           # CoinGecko integration
-│   │   ├── telegram/route.ts         # Telegram webhook
 │   │   └── generate/route.ts         # Weekly reports
 │   ├── layout.tsx                    # App shell with theme
 │   └── page.tsx                      # The main UI + page layout
@@ -151,17 +150,6 @@ This makes the UI feel instant when users click to expand.
 
 **The lesson:** Tailwind 4.0 uses `@layer` directives differently. We had to restructure our `globals.css` to make custom component styles work.
 
-### Grammy (Telegram Bot Framework)
-
-**Why?** Grammy is the modern successor to Telegraf. Better TypeScript support, more intuitive API.
-
-**Architecture decision:** We use webhooks, not polling. This means:
-- Instant responses (no polling delay)
-- Vercel-compatible (stateless)
-- Must return within 30 seconds (or Telegram retries)
-
-**The clever solution:** Fire-and-forget pattern. The webhook immediately returns 200 OK, then processes the message asynchronously.
-
 ---
 
 ## The Bugs We Fought (And Won)
@@ -219,25 +207,6 @@ if (!grokResponse.themes || grokResponse.themes.length === 0) {
 **The lesson:** AI hallucination is a feature, not a bug—until you ship it to users. Always validate AI outputs before using them.
 
 ---
-
-### Bug #4: The Telegram Timeout
-
-**The problem:** Users clicking `/whatsup` in Telegram would sometimes get no response. The bot seemed dead.
-
-**The investigation:** Telegram webhooks must respond within 30 seconds. Our AI calls were taking 45-60 seconds.
-
-**The fix:** Fire-and-forget architecture:
-```typescript
-// Immediately respond to Telegram
-res.status(200).send('OK');
-
-// Process asynchronously (user sees "loading..." then edited message)
-processWhatsUp(chatId).then(result => {
-  bot.api.editMessageText(chatId, loadingMsgId, result);
-});
-```
-
-**The lesson:** Never block on long-running operations in webhooks. Acknowledge immediately, process later.
 
 ---
 
@@ -362,7 +331,6 @@ We use `.env.local` for all sensitive data:
 ```env
 ANTHROPIC_API_KEY=sk-ant-...
 XAI_API_KEY=xai-...
-TELEGRAM_BOT_TOKEN=...
 ADMIN_BYPASS_TOKEN=...
 ```
 
@@ -421,41 +389,33 @@ With a progress countdown (45 seconds estimated). Users don't mind waiting when 
 
 ---
 
-## The Telegram Bot: A Mini-Project Within
+---
 
-The Telegram integration deserves special attention. It's practically its own app.
+## Price Card Sparklines
 
-### Command Structure
+Each price card now shows a tiny 7-day sparkline chart—a 60x20px SVG polyline rendered inline. The data comes from CoinGecko's `sparkline_in_7d` field (168 hourly data points), enabled only on `fetchSpecificCoins()` for the 5-11 displayed coins. We deliberately keep it OFF for `fetchTop100/300` calls used by the coin selector and top movers, since those would bloat the response for no visual benefit.
 
-```
-/start   → Welcome message with instructions
-/whatsup → Full market summary (same as web)
-/prices  → Quick price check with refresh buttons
-/report  → Password-protected weekly update
-```
+The sparkline color follows the 24h change: green if positive, red if negative. No axes, no hover, no charting library—just the line shape. It gives instant visual context for whether a coin is trending up or down over the week.
 
-### The Webhook Architecture
+---
 
-```
-Telegram → POST /api/telegram → Grammy parses → Command router
-                                                    ↓
-                                           Fire-and-forget
-                                           processing
-                                                    ↓
-                                           Edit original
-                                           "Loading..." message
-```
+## Auto-Refresh: Keeping Prices Fresh
 
-### Inline Keyboards
+Prices used to go stale the moment they loaded. Now a 60-second interval auto-refreshes price data (and sparklines) without touching the AI summary or report—those cost API credits and take 30+ seconds.
 
-We use inline buttons extensively:
-```typescript
-const keyboard = new InlineKeyboard()
-  .text('🔄 Refresh', 'refresh_prices')
-  .text('📊 Full Report', 'whatsup');
-```
+The refresh button shows a countdown ("Refresh 45s") so users know when the next update is coming. Manual clicks reset the timer. The interval skips if a fetch is already in progress, preventing race conditions.
 
-Users can interact without typing. Better UX.
+**Key implementation detail:** We use a `useRef` to track loading state inside the interval callback, since `setInterval` closures capture stale state. The ref stays in sync via a `useEffect`.
+
+---
+
+## Mobile Polish
+
+Several targeted improvements for small screens:
+- **EthBtcChart**: Axis font bumped from 9px to 10px for readability. Tooltip clamped to 10-90% of chart width to prevent overflow. Timeframe buttons enlarged for touch. Level legend hidden on mobile (too cramped in the header).
+- **TopMovers**: Tier buttons get `overflow-x-auto` + `flex-shrink-0` so they scroll horizontally instead of wrapping.
+- **WhatsUpDisplay**: Chat input padding increased for comfortable touch typing. Suggested question buttons enlarged. Placeholder text shortened.
+- **Price cards**: `truncate` on price text prevents long decimals from breaking layout.
 
 ---
 
@@ -528,9 +488,6 @@ cp .env.example .env.local
 
 # Run development server
 npm run dev
-
-# For Telegram (optional)
-npm run setup-webhook  # After deploying
 ```
 
 ---

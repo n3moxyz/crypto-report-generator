@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchTop100Coins, fetchTop300Coins, getDisplayItems, getTopMovers, CoinData } from "@/lib/coingecko";
+import { fetchTop100Coins, fetchTop300Coins, fetchSpecificCoins, getDisplayItems, getTopMovers, CoinData } from "@/lib/coingecko";
 
 // Stablecoins to filter out
 const STABLECOIN_IDS = [
@@ -22,29 +22,17 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const selectedCoins = searchParams.get("coins")?.split(",").filter(Boolean) || [];
+    const coinIds = selectedCoins.length > 0 ? selectedCoins : undefined;
 
-    // Fetch top 100 for movers/prices and top 300 for selector
-    const [top100Coins, top300Coins] = await Promise.all([
+    // Fetch selected coins (with sparkline), top 100 for movers, top 300 for selector — all in parallel
+    const [selectedCoinsData, top100Coins, top300Coins] = await Promise.all([
+      fetchSpecificCoins(coinIds),
       fetchTop100Coins(),
       fetchTop300Coins(),
     ]);
 
-    // Filter selected coins from top 300 data
-    let selectedCoinsData: CoinData[];
-    if (selectedCoins.length > 0) {
-      selectedCoinsData = selectedCoins
-        .map(id => top300Coins.find(c => c.id === id))
-        .filter((c): c is CoinData => c !== undefined);
-    } else {
-      // Default coins
-      const defaultIds = ["bitcoin", "ethereum", "solana", "binancecoin", "ripple", "hyperliquid"];
-      selectedCoinsData = defaultIds
-        .map(id => top300Coins.find(c => c.id === id))
-        .filter((c): c is CoinData => c !== undefined);
-    }
-
-    // Get display items for selected coins
-    const displayItems = getDisplayItems(selectedCoinsData, selectedCoins.length > 0 ? selectedCoins : undefined);
+    // Get display items for selected coins (sparkline data included from fetchSpecificCoins)
+    const displayItems = getDisplayItems(selectedCoinsData, coinIds);
 
     // Get top movers for different tiers
     const topMovers = {

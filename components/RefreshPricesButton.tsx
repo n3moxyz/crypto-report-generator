@@ -1,9 +1,10 @@
 interface RefreshPricesButtonProps {
   onClick: () => void;
   isLoading: boolean;
+  secondsUntilRefresh?: number;
 }
 
-export default function RefreshPricesButton({ onClick, isLoading }: RefreshPricesButtonProps) {
+export default function RefreshPricesButton({ onClick, isLoading, secondsUntilRefresh }: RefreshPricesButtonProps) {
   return (
     <button
       onClick={onClick}
@@ -27,7 +28,18 @@ export default function RefreshPricesButton({ onClick, isLoading }: RefreshPrice
           d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
         />
       </svg>
-      {isLoading ? "Refreshing…" : "Refresh"}
+      {isLoading ? (
+        "Refreshing…"
+      ) : (
+        <>
+          Refresh
+          {secondsUntilRefresh != null && (
+            <span className="text-muted ml-1" style={{ fontSize: "var(--text-xs)" }}>
+              {secondsUntilRefresh}s
+            </span>
+          )}
+        </>
+      )}
     </button>
   );
 }

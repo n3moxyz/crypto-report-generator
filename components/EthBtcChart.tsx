@@ -156,7 +156,7 @@ export default function EthBtcChart({ currentRatio }: EthBtcChartProps) {
             )}
           </div>
         </div>
-        <div className="flex flex-col gap-0.5 items-end">
+        <div className="hidden sm:flex flex-col gap-0.5 items-end">
           {ETHBTC_LEVELS.map((level) => {
             const isActive = getActiveLevel(currentRatio) === level.label;
             return (
@@ -194,7 +194,7 @@ export default function EthBtcChart({ currentRatio }: EthBtcChartProps) {
           <button
             key={opt.value}
             onClick={() => setTimeframe(opt.value)}
-            className={`px-2.5 py-1 rounded transition-colors ${
+            className={`px-3 py-1.5 rounded transition-colors ${
               timeframe === opt.value
                 ? "bg-[var(--accent)] text-white"
                 : "bg-tertiary text-secondary hover:bg-hover"
@@ -297,7 +297,7 @@ export default function EthBtcChart({ currentRatio }: EthBtcChartProps) {
                 y={tick.y + 3}
                 textAnchor="end"
                 fill="var(--text-muted)"
-                fontSize="9"
+                fontSize="10"
                 fontFamily="monospace"
               >
                 {tick.val.toFixed(4)}
@@ -312,7 +312,7 @@ export default function EthBtcChart({ currentRatio }: EthBtcChartProps) {
                 y={CHART_HEIGHT - 5}
                 textAnchor="middle"
                 fill="var(--text-muted)"
-                fontSize="9"
+                fontSize="10"
               >
                 {tick.label}
               </text>
@@ -320,11 +320,14 @@ export default function EthBtcChart({ currentRatio }: EthBtcChartProps) {
           </svg>
 
           {/* Hover tooltip */}
-          {hoverPoint && hoverIndex !== null && (
+          {hoverPoint && hoverIndex !== null && (() => {
+            const pct = (toX(hoverIndex) / CHART_WIDTH) * 100;
+            const clampedPct = Math.max(10, Math.min(90, pct));
+            return (
             <div
               className="absolute pointer-events-none px-2 py-1 rounded-md shadow-lg"
               style={{
-                left: `${(toX(hoverIndex) / CHART_WIDTH) * 100}%`,
+                left: `${clampedPct}%`,
                 top: "0px",
                 transform: "translateX(-50%)",
                 backgroundColor: "var(--bg-primary)",
@@ -344,7 +347,8 @@ export default function EthBtcChart({ currentRatio }: EthBtcChartProps) {
                 {hoverPoint[1].toFixed(5)}
               </span>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
     </div>

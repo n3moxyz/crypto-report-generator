@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import ReportButton from "@/components/ReportButton";
 import ReportDisplay from "@/components/ReportDisplay";
 import WhatsUpButton from "@/components/WhatsUpButton";
@@ -21,6 +21,47 @@ interface DisplayItem {
   current_price: number | string;
   price_change_percentage_24h: number | null;
   isRatio?: boolean;
+  sparkline?: number[];
+}
+
+function renderSparkline(data: number[], isPositive: boolean) {
+  const W = 60;
+  const H = 20;
+  const len = data.length;
+  if (len < 2) return null;
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+
+  const points = data
+    .map((val, i) => {
+      const x = (i / (len - 1)) * W;
+      const y = H - ((val - min) / range) * H;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  const color = isPositive ? "var(--success)" : "var(--danger)";
+
+  return (
+    <svg
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      className="mt-1"
+      aria-hidden="true"
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 interface AvailableCoin {
@@ -55,6 +96,35 @@ export default function Home() {
   const [isTopMoversCollapsed, setIsTopMoversCollapsed] = useState(true);
   const [topMovers, setTopMovers] = useState<TieredTopMovers | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(60);
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isPricesLoadingRef = useRef(false);
+
+  // Keep ref in sync with loading state for auto-refresh interval
+  useEffect(() => {
+    isPricesLoadingRef.current = isPricesLoading;
+  }, [isPricesLoading]);
+
+  // Auto-refresh prices every 60 seconds
+  useEffect(() => {
+    autoRefreshRef.current = setInterval(() => {
+      setSecondsUntilRefresh((prev) => {
+        if (prev <= 1) {
+          // Trigger refresh if not already loading
+          if (!isPricesLoadingRef.current) {
+            refreshPrices();
+          }
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Admin mode: Ctrl+Shift+K toggles, persisted in localStorage
   const handleAdminToggle = useCallback((e: KeyboardEvent) => {
@@ -99,6 +169,7 @@ export default function Home() {
   const refreshAll = async (coins?: string[]) => {
     setIsPricesLoading(true);
     setError("");
+    setSecondsUntilRefresh(60);
 
     // Also set loading states for whatsup and report if they exist
     if (hasWhatsUp) {
@@ -181,6 +252,7 @@ export default function Home() {
   const refreshPrices = async (coins?: string[]) => {
     setIsPricesLoading(true);
     setError("");
+    setSecondsUntilRefresh(60);
 
     try {
       const coinsParam = (coins || selectedCoins).join(",");
@@ -448,7 +520,7 @@ export default function Home() {
                   Reset
                 </button>
               )}
-              <RefreshPricesButton onClick={() => refreshAll()} isLoading={isPricesLoading || isWhatsUpLoading || isLoading} />
+              <RefreshPricesButton onClick={() => refreshAll()} isLoading={isPricesLoading || isWhatsUpLoading || isLoading} secondsUntilRefresh={secondsUntilRefresh} />
             </div>
           </div>
 
@@ -465,7 +537,7 @@ export default function Home() {
                         {item.symbol}
                       </span>
                     </div>
-                    <div className="font-mono text-primary font-semibold" style={{ fontSize: "var(--text-lg)" }}>
+                    <div className="font-mono text-primary font-semibold truncate" style={{ fontSize: "var(--text-lg)" }}>
                       {formatPrice(item)}
                     </div>
                     {item.price_change_percentage_24h !== null && (
@@ -475,6 +547,10 @@ export default function Home() {
                         {item.price_change_percentage_24h >= 0 ? "+" : ""}
                         {item.price_change_percentage_24h.toFixed(2)}%
                       </div>
+                    )}
+                    {item.sparkline && item.sparkline.length > 1 && renderSparkline(
+                      item.sparkline,
+                      (item.price_change_percentage_24h ?? 0) >= 0
                     )}
                   </div>
                 ))}
