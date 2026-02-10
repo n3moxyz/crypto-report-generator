@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ReportButton from "@/components/ReportButton";
 import ReportDisplay from "@/components/ReportDisplay";
 import WhatsUpButton from "@/components/WhatsUpButton";
@@ -54,7 +54,27 @@ export default function Home() {
   const [isEthBtcCollapsed, setIsEthBtcCollapsed] = useState(true);
   const [isTopMoversCollapsed, setIsTopMoversCollapsed] = useState(true);
   const [topMovers, setTopMovers] = useState<TieredTopMovers | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
+  // Admin mode: Ctrl+Shift+K toggles, persisted in localStorage
+  const handleAdminToggle = useCallback((e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "K") {
+      e.preventDefault();
+      setIsAdmin((prev) => {
+        const next = !prev;
+        try { localStorage.setItem("_m", next ? "1" : ""); } catch { /* ignore */ }
+        return next;
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("_m") === "1") setIsAdmin(true);
+    } catch { /* ignore */ }
+    window.addEventListener("keydown", handleAdminToggle);
+    return () => window.removeEventListener("keydown", handleAdminToggle);
+  }, [handleAdminToggle]);
 
   // Load pinned coins from localStorage (client-side only to avoid hydration mismatch)
   useEffect(() => {
@@ -368,17 +388,18 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/archive"
-              className="btn-ghost flex items-center gap-1"
-              style={{ fontSize: "var(--text-xs)", opacity: 0.5 }}
-              aria-label="Archive (internal)"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              Archive
-            </Link>
+            {isAdmin && (
+              <Link
+                href="/archive"
+                className="btn-ghost flex items-center gap-1"
+                style={{ fontSize: "var(--text-xs)", opacity: 0.5 }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Archive
+              </Link>
+            )}
             <ThemeToggle />
           </div>
         </div>
@@ -583,9 +604,11 @@ export default function Home() {
                   Get Your Market Briefing
                 </h2>
               </div>
-              <div className="hidden sm:block" style={{ opacity: 0.5 }}>
-                <ReportButton onClick={generateReport} isLoading={isLoading} onAuthenticated={() => setIsReportAuthenticated(true)} />
-              </div>
+              {isAdmin && (
+                <div className="hidden sm:block" style={{ opacity: 0.5 }}>
+                  <ReportButton onClick={generateReport} isLoading={isLoading} onAuthenticated={() => setIsReportAuthenticated(true)} />
+                </div>
+              )}
             </div>
             <p className="text-secondary mb-4" style={{ fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
               AI-powered 24-48h market intelligence. Scans X/Twitter, analyzes price action across 300+ coins, and delivers a concise briefing with interactive follow-up.
@@ -662,8 +685,8 @@ export default function Home() {
           </section>
         )}
 
-        {/* Report Section - Collapsible */}
-        {(hasReport || isLoading) && (
+        {/* Report Section - Collapsible (admin only) */}
+        {isAdmin && (hasReport || isLoading) && (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-bold text-primary" style={{ fontSize: "var(--text-base)" }}>
