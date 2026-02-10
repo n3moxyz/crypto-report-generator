@@ -3,6 +3,19 @@ import { generateWhatsUp } from "@/lib/openai";
 import { getCachedWhatsUp, setCachedWhatsUp, getCacheAge } from "@/lib/cache";
 import { checkRateLimit } from "@/lib/rateLimit";
 
+// Cooldown for force-refresh: 10 minutes per IP
+const REFRESH_COOLDOWN_MS = 10 * 60 * 1000;
+const refreshCooldowns = new Map<string, number>();
+
+function getClientIP(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+    request.headers.get("x-real-ip") ||
+    request.headers.get("x-vercel-forwarded-for")?.split(",")[0].trim() ||
+    "unknown"
+  );
+}
+
 export async function GET(request: NextRequest) {
   // Check rate limit
   const rateLimitResult = checkRateLimit(request);
@@ -27,11 +40,29 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Check if refresh is requested
     const url = new URL(request.url);
-    const forceRefresh = url.searchParams.get("refresh") === "true";
+    const refreshRequested = url.searchParams.get("refresh") === "true";
+    const clientIP = getClientIP(request);
 
-    // Check for cached data first (unless refresh is forced)
+    // Force-refresh is rate-limited: once per 10 minutes per IP
+    // Admin bypass token skips the cooldown
+    const adminBypassToken = process.env.ADMIN_BYPASS_TOKEN;
+    const token = url.searchParams.get("token");
+    const isAdmin = !!(adminBypassToken && token === adminBypassToken);
+
+    let forceRefresh = false;
+    if (refreshRequested && !isAdmin) {
+      const lastRefresh = refreshCooldowns.get(clientIP) || 0;
+      if (Date.now() - lastRefresh >= REFRESH_COOLDOWN_MS) {
+        forceRefresh = true;
+        refreshCooldowns.set(clientIP, Date.now());
+      }
+      // If cooldown hasn't elapsed, fall through to serve cache
+    } else if (refreshRequested && isAdmin) {
+      forceRefresh = true;
+    }
+
+    // Check for cached data first (unless force refresh is allowed)
     if (!forceRefresh) {
       const cached = await getCachedWhatsUp();
 
@@ -45,7 +76,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // No valid cache, generate fresh data
+    // No valid cache or force refresh — generate fresh data
     const data = await generateWhatsUp();
 
     // Cache the result

@@ -247,7 +247,7 @@ export default function Home() {
       const coinsParam = selectedCoins.join(",");
       const [pricesResponse, whatsUpResponse] = await Promise.all([
         fetch(`/api/prices?coins=${coinsParam}`),
-        fetch("/api/whatsup?refresh=true"),
+        fetch("/api/whatsup"),
       ]);
 
       if (!pricesResponse.ok) {
