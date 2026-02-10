@@ -1,6 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import { timingSafeEqual } from "crypto";
+
+function secureCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a.padEnd(256, '\0'));
+  const bufB = Buffer.from(b.padEnd(256, '\0'));
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+}
 
 function parseDateFromFilename(filename: string): Date | null {
   const match = filename.match(/^(\d{1,2})([a-z]{3})(\d{2})/i);
@@ -25,7 +32,16 @@ function formatDateLabel(date: Date): string {
   return `${day} ${month} ${year}`;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Require password if ARCHIVE_PASSWORD is set
+  const archivePassword = process.env.ARCHIVE_PASSWORD;
+  if (archivePassword) {
+    const authHeader = request.headers.get("x-archive-password") || "";
+    if (!secureCompare(authHeader, archivePassword)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   try {
     const samplesDir = path.join(process.cwd(), "samples");
     const files = await fs.readdir(samplesDir);

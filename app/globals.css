@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Prevent layout shift when scrollbar appears/disappears */
+html {
+  scrollbar-gutter: stable;
+}
+
 :root {
   /* Light mode - ethval.com style */
   --bg-primary: #f8fafc;

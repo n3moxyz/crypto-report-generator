@@ -24,9 +24,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Select the correct password based on type
-    const correctPassword = type === "whatsup"
-      ? process.env.WHATSUP_PASSWORD
-      : process.env.REPORT_PASSWORD;
+    let correctPassword: string | undefined;
+    if (type === "whatsup") {
+      correctPassword = process.env.WHATSUP_PASSWORD;
+    } else if (type === "archive") {
+      correctPassword = process.env.ARCHIVE_PASSWORD;
+    } else {
+      correctPassword = process.env.REPORT_PASSWORD;
+    }
 
     if (!correctPassword) {
       // If no password is configured, allow access
