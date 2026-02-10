@@ -63,13 +63,6 @@ interface WhatsUpDisplayProps {
   isLoading: boolean;
 }
 
-const TIER_OPTIONS: { value: TopMoverTier; label: string }[] = [
-  { value: "top50", label: "Top 50" },
-  { value: "top100", label: "Top 100" },
-  { value: "top200", label: "Top 200" },
-  { value: "top300", label: "Top 300" },
-];
-
 // Hoisted regex for performance - avoids recreation on every formatText call
 // Matches: "BTC $89k", "ETH $3.2k", "SOL $240", "BTC: $89k", "BTC at $89k"
 // Does NOT match: "$891k inflows", "$10 billion", "absorbed $345M"
@@ -114,7 +107,6 @@ const normalizeSubPoint = (sub: string | SubPoint): { text: string; sourceUrl?: 
 };
 
 export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps) {
-  const [selectedTier, setSelectedTier] = useState<TopMoverTier>("top100");
   const [timeRemaining, setTimeRemaining] = useState(ESTIMATED_TIME);
   const [startTime, setStartTime] = useState<number | null>(null);
 
@@ -263,12 +255,6 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
     } finally {
       setIsChatLoading(false);
     }
-  };
-
-  const formatPrice = (price: number) => {
-    if (price >= 1000) return `$${(price / 1000).toFixed(1)}k`;
-    if (price >= 1) return `$${price.toFixed(2)}`;
-    return `$${price.toFixed(4)}`;
   };
 
   const handleCopyToClipboard = async () => {
@@ -705,100 +691,6 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
             ))}
           </div>
         )}
-      </div>
-
-      {/* Top Movers - Improved Layout */}
-      <div className="mb-4">
-        {/* Tier Toggle */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>Show movers from:</span>
-          <div className="flex gap-1">
-            {TIER_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setSelectedTier(option.value)}
-                className={`px-2 py-1 rounded transition-colors ${
-                  selectedTier === option.value
-                    ? "bg-[var(--accent)] text-white"
-                    : "bg-tertiary text-secondary hover:bg-hover"
-                }`}
-                style={{ fontSize: "var(--text-xs)" }}
-                aria-label={`Show movers from ${option.label}`}
-                aria-pressed={selectedTier === option.value}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Gainers */}
-        <div
-          className="rounded-lg p-4"
-          style={{ backgroundColor: "var(--success-bg)", border: "1px solid var(--success)" }}
-        >
-          <div className="mb-3" style={{ fontSize: "var(--text-xs)", color: "var(--success)", fontWeight: 700, letterSpacing: "0.05em" }}>
-            TOP GAINERS (24H)
-          </div>
-          <div className="space-y-2.5">
-            {(data.topMovers[selectedTier]?.gainers || []).slice(0, 5).map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted" style={{ fontSize: "var(--text-xs)", width: "16px" }}>
-                    {index + 1}.
-                  </span>
-                  <span className="font-medium" style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)" }}>
-                    {item.symbol}
-                  </span>
-                  <span className="text-muted font-mono" style={{ fontSize: "var(--text-xs)" }}>
-                    {formatPrice(item.price)}
-                  </span>
-                </div>
-                <span className="font-mono font-semibold" style={{ fontSize: "var(--text-sm)", color: "var(--success)" }}>
-                  {item.change}
-                </span>
-              </div>
-            ))}
-            {(data.topMovers[selectedTier]?.gainers || []).length === 0 && (
-              <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>No gainers</span>
-            )}
-          </div>
-        </div>
-
-        {/* Losers */}
-        <div
-          className="rounded-lg p-4"
-          style={{ backgroundColor: "var(--danger-bg)", border: "1px solid var(--danger)" }}
-        >
-          <div className="mb-3" style={{ fontSize: "var(--text-xs)", color: "var(--danger)", fontWeight: 700, letterSpacing: "0.05em" }}>
-            TOP LOSERS (24H)
-          </div>
-          <div className="space-y-2.5">
-            {(data.topMovers[selectedTier]?.losers || []).slice(0, 5).map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted" style={{ fontSize: "var(--text-xs)", width: "16px" }}>
-                    {index + 1}.
-                  </span>
-                  <span className="font-medium" style={{ fontSize: "var(--text-sm)", color: "var(--text-primary)" }}>
-                    {item.symbol}
-                  </span>
-                  <span className="text-muted font-mono" style={{ fontSize: "var(--text-xs)" }}>
-                    {formatPrice(item.price)}
-                  </span>
-                </div>
-                <span className="font-mono font-semibold" style={{ fontSize: "var(--text-sm)", color: "var(--danger)" }}>
-                  {item.change}
-                </span>
-              </div>
-            ))}
-            {(data.topMovers[selectedTier]?.losers || []).length === 0 && (
-              <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>No losers</span>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Timestamp */}

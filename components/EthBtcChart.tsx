@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 interface EthBtcChartProps {
   currentRatio: number;
-  getEthBtcContext: (ratio: number) => string;
 }
 
 type Timeframe = "7" | "30" | "90" | "365" | "ytd" | "max";
@@ -27,7 +26,23 @@ const PADDING_BOTTOM = 30;
 const PLOT_WIDTH = CHART_WIDTH - PADDING_LEFT - PADDING_RIGHT;
 const PLOT_HEIGHT = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 
-export default function EthBtcChart({ currentRatio, getEthBtcContext }: EthBtcChartProps) {
+const ETHBTC_LEVELS = [
+  { threshold: 0.055, label: "ETH outperforming", direction: "up" as const },
+  { threshold: 0.040, label: "Healthy range", direction: "up" as const },
+  { threshold: 0.032, label: "Below long-term avg", direction: "down" as const },
+  { threshold: 0.025, label: "Cycle lows territory", direction: "down" as const },
+  { threshold: 0, label: "Pre-BMNR levels", direction: "down" as const },
+];
+
+function getActiveLevel(ratio: number): string {
+  if (ratio >= 0.055) return ETHBTC_LEVELS[0].label;
+  if (ratio >= 0.040) return ETHBTC_LEVELS[1].label;
+  if (ratio >= 0.032) return ETHBTC_LEVELS[2].label;
+  if (ratio >= 0.025) return ETHBTC_LEVELS[3].label;
+  return ETHBTC_LEVELS[4].label;
+}
+
+export default function EthBtcChart({ currentRatio }: EthBtcChartProps) {
   const [timeframe, setTimeframe] = useState<Timeframe>("90");
   const [prices, setPrices] = useState<[number, number][]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -141,13 +156,35 @@ export default function EthBtcChart({ currentRatio, getEthBtcContext }: EthBtcCh
             )}
           </div>
         </div>
-        <div
-          className="px-3 py-1.5 rounded-lg text-right"
-          style={{ backgroundColor: "var(--bg-tertiary)" }}
-        >
-          <span className="text-secondary" style={{ fontSize: "var(--text-sm)" }}>
-            {getEthBtcContext(currentRatio)}
-          </span>
+        <div className="flex flex-col gap-0.5 items-end">
+          {ETHBTC_LEVELS.map((level) => {
+            const isActive = getActiveLevel(currentRatio) === level.label;
+            return (
+              <div
+                key={level.label}
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded transition-opacity"
+                style={{
+                  opacity: isActive ? 1 : 0.35,
+                  backgroundColor: isActive ? "var(--bg-tertiary)" : "transparent",
+                }}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{
+                    backgroundColor: isActive
+                      ? level.direction === "up" ? "var(--success)" : "var(--danger)"
+                      : "var(--text-muted)",
+                  }}
+                />
+                <span
+                  className={isActive ? "text-primary font-medium" : "text-muted"}
+                  style={{ fontSize: "10px", whiteSpace: "nowrap" }}
+                >
+                  {level.label}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 

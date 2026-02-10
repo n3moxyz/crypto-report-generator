@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import ReportButton from "@/components/ReportButton";
 import ReportDisplay from "@/components/ReportDisplay";
 import WhatsUpButton from "@/components/WhatsUpButton";
-import WhatsUpDisplay, { WhatsUpData } from "@/components/WhatsUpDisplay";
+import WhatsUpDisplay, { WhatsUpData, TieredTopMovers } from "@/components/WhatsUpDisplay";
+import TopMovers from "@/components/TopMovers";
 import RefreshPricesButton from "@/components/RefreshPricesButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import CoinSelector from "@/components/CoinSelector";
 import EthBtcChart from "@/components/EthBtcChart";
+import FeaturePreview from "@/components/FeaturePreview";
 import Link from "next/link";
 
 interface DisplayItem {
@@ -50,6 +52,8 @@ export default function Home() {
   const [isMarketSummaryCollapsed, setIsMarketSummaryCollapsed] = useState(false);
   const [isReportCollapsed, setIsReportCollapsed] = useState(false);
   const [isEthBtcCollapsed, setIsEthBtcCollapsed] = useState(true);
+  const [isTopMoversCollapsed, setIsTopMoversCollapsed] = useState(true);
+  const [topMovers, setTopMovers] = useState<TieredTopMovers | null>(null);
 
 
   // Load pinned coins from localStorage (client-side only to avoid hydration mismatch)
@@ -103,6 +107,7 @@ export default function Home() {
         top200: { gainers: [], losers: [] },
         top300: { gainers: [], losers: [] },
       };
+      setTopMovers(newTopMovers);
       setLastPriceUpdate(new Date());
       setIsPricesLoading(false);
 
@@ -172,6 +177,7 @@ export default function Home() {
         top200: { gainers: [], losers: [] },
         top300: { gainers: [], losers: [] },
       };
+      setTopMovers(newTopMovers);
       setLastPriceUpdate(new Date());
 
       // Also update market summary top movers if it's been displayed
@@ -238,6 +244,7 @@ export default function Home() {
       // Update prices and top movers
       setDisplayItems(pricesData.displayItems);
       setAvailableCoins(pricesData.availableCoins || []);
+      setTopMovers(pricesData.topMovers || null);
       setLastPriceUpdate(new Date());
 
       // Set whatsup data with fresh top movers
@@ -300,14 +307,6 @@ export default function Home() {
   // Separate ETHBTC ratio from regular price items
   const ethBtcItem = displayItems.find((item) => item.isRatio);
   const priceItems = displayItems.filter((item) => !item.isRatio);
-
-  const getEthBtcContext = (ratio: number): string => {
-    if (ratio < 0.025) return "Pre-BMNR levels";
-    if (ratio < 0.032) return "Cycle lows territory";
-    if (ratio < 0.040) return "Below long-term average";
-    if (ratio < 0.055) return "Healthy range";
-    return "ETH outperforming";
-  };
 
   const formatPrice = (item: DisplayItem) => {
     if (item.isRatio) {
@@ -491,110 +490,117 @@ export default function Home() {
                 </span>
               )}
             </div>
+
+            {/* ETH/BTC Ratio Chart - Collapsible, nested in prices */}
+            {ethBtcItem && (
+              <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--border-color)" }}>
+                <button
+                  onClick={() => setIsEthBtcCollapsed(!isEthBtcCollapsed)}
+                  className="flex items-center gap-2 cursor-pointer"
+                  aria-expanded={!isEthBtcCollapsed}
+                  aria-label={isEthBtcCollapsed ? "Expand ETH/BTC ratio" : "Collapse ETH/BTC ratio"}
+                >
+                  <span className="font-semibold text-primary" style={{ fontSize: "var(--text-sm)" }}>
+                    ETH/BTC Ratio
+                  </span>
+                  <span className="btn-ghost flex items-center gap-1" style={{ fontSize: "var(--text-xs)" }}>
+                    {isEthBtcCollapsed ? (
+                      <>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        Show
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                        Collapse
+                      </>
+                    )}
+                  </span>
+                </button>
+                {!isEthBtcCollapsed && (
+                  <div className="mt-3">
+                    <EthBtcChart
+                      currentRatio={parseFloat(String(ethBtcItem.current_price))}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Top Movers - Collapsible, nested in prices */}
+            {topMovers && (
+              <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--border-color)" }}>
+                <button
+                  onClick={() => setIsTopMoversCollapsed(!isTopMoversCollapsed)}
+                  className="flex items-center gap-2 cursor-pointer"
+                  aria-expanded={!isTopMoversCollapsed}
+                  aria-label={isTopMoversCollapsed ? "Expand top movers" : "Collapse top movers"}
+                >
+                  <span className="font-semibold text-primary" style={{ fontSize: "var(--text-sm)" }}>
+                    Top Movers
+                  </span>
+                  <span className="btn-ghost flex items-center gap-1" style={{ fontSize: "var(--text-xs)" }}>
+                    {isTopMoversCollapsed ? (
+                      <>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        Show
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                        Collapse
+                      </>
+                    )}
+                  </span>
+                </button>
+                {!isTopMoversCollapsed && (
+                  <div className="mt-3">
+                    <TopMovers topMovers={topMovers} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
-        {/* ETH/BTC Ratio Chart - Collapsible */}
-        {ethBtcItem && (
-          <section className="mb-6">
-            <button
-              onClick={() => setIsEthBtcCollapsed(!isEthBtcCollapsed)}
-              className="flex items-center gap-2 mb-3 cursor-pointer"
-              aria-expanded={!isEthBtcCollapsed}
-              aria-label={isEthBtcCollapsed ? "Expand ETH/BTC ratio" : "Collapse ETH/BTC ratio"}
-            >
-              <h2 className="font-bold text-primary" style={{ fontSize: "var(--text-base)" }}>
-                ETH/BTC Ratio
-              </h2>
-              <span className="btn-ghost flex items-center gap-1" style={{ fontSize: "var(--text-xs)" }}>
-                {isEthBtcCollapsed ? (
-                  <>
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                    Show
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                    Collapse
-                  </>
-                )}
-              </span>
-            </button>
-            {!isEthBtcCollapsed && (
-              <EthBtcChart
-                currentRatio={parseFloat(String(ethBtcItem.current_price))}
-                getEthBtcContext={getEthBtcContext}
-              />
-            )}
-          </section>
-        )}
-
-        {/* Actions Section */}
+        {/* Hero CTA Section */}
         <section className="mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="font-bold text-primary" style={{ fontSize: "var(--text-base)" }}>
-                Actions
-              </h2>
-              <WhatsUpButton onClick={fetchWhatsUp} isLoading={isWhatsUpLoading} />
-              {/* Info icon with hover tooltip */}
-              <div className="relative group">
-                <button
-                  className="w-4 h-4 rounded-full flex items-center justify-center text-muted hover:text-primary transition-colors"
-                  style={{
-                    backgroundColor: "var(--bg-tertiary)",
-                    border: "1px solid var(--border-color)",
-                    fontSize: "10px",
-                  }}
-                  aria-label="How to use this app"
-                >
-                  i
-                </button>
-                {/* Tooltip on hover */}
-                <div
-                  className="absolute left-0 top-full mt-2 w-72 p-4 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
-                  style={{
-                    backgroundColor: "var(--bg-primary)",
-                    border: "1px solid var(--border-color)",
-                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
-                  }}
-                >
-                  <h4 className="text-primary font-semibold mb-3" style={{ fontSize: "var(--text-sm)" }}>
-                    How to use
-                  </h4>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-2">
-                      <span className="text-accent font-medium" style={{ fontSize: "var(--text-xs)" }}>1.</span>
-                      <p className="text-secondary" style={{ fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
-                        Press <span className="font-medium text-accent">What&apos;s Up?</span> to get the latest market summary (24-48h)
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-accent font-medium" style={{ fontSize: "var(--text-xs)" }}>2.</span>
-                      <p className="text-secondary" style={{ fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
-                        Click <span className="italic">Tell me more</span> on any point for deeper explanation
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-accent font-medium" style={{ fontSize: "var(--text-xs)" }}>3.</span>
-                      <p className="text-secondary" style={{ fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
-                        Ask follow-up questions to dig even deeper
-                      </p>
-                    </div>
-                  </div>
-                </div>
+          <div className="card p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                </svg>
+                <h2 className="font-bold text-primary" style={{ fontSize: "var(--text-base)" }}>
+                  Get Your Market Briefing
+                </h2>
+              </div>
+              <div className="hidden sm:block" style={{ opacity: 0.5 }}>
+                <ReportButton onClick={generateReport} isLoading={isLoading} onAuthenticated={() => setIsReportAuthenticated(true)} />
               </div>
             </div>
-            {/* Generate Update button - faded, right-aligned for internal use */}
-            <div style={{ opacity: 0.5 }}>
-              <ReportButton onClick={generateReport} isLoading={isLoading} onAuthenticated={() => setIsReportAuthenticated(true)} />
+            <p className="text-secondary mb-4" style={{ fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
+              AI-powered 24-48h market intelligence. Scans X/Twitter, analyzes price action across 300+ coins, and delivers a concise briefing with interactive follow-up.
+            </p>
+            <div className="flex justify-center sm:justify-start [&>button]:w-full sm:[&>button]:w-auto sm:[&>button]:min-w-[200px]">
+              <WhatsUpButton onClick={fetchWhatsUp} isLoading={isWhatsUpLoading} />
             </div>
+            <p className="text-muted mt-3" style={{ fontSize: "var(--text-xs)" }}>
+              Takes ~45 seconds | Sources: X/Twitter, CoinGecko, AI analysis
+            </p>
           </div>
         </section>
+
+        {/* Feature Preview - shown only before first What's Up */}
+        {!hasWhatsUp && !isWhatsUpLoading && <FeaturePreview />}
 
         {/* Market Summary Section (What's Up) - Collapsible */}
         {(hasWhatsUp || isWhatsUpLoading) && (
