@@ -419,6 +419,26 @@ Several targeted improvements for small screens:
 
 ---
 
+## API Cost Protection: Defense in Depth
+
+Going public at `cryptowhatsup.cc` meant anyone could hit our API endpoints. We added two layers of protection:
+
+**Layer 1: Per-IP Rate Limiting** — The `/api/whatsup` endpoint already had `checkRateLimit()` (10 req/min per IP), but the `/api/whatsup/followup` endpoint was wide open. Each followup call costs Claude API credits. We applied the same rate limiter to both endpoints, sharing the in-memory store.
+
+**Layer 2: Daily Global Budget Cap** — Per-IP limits don't stop distributed abuse (100 different IPs, each under limit). So we added a global daily counter in `lib/dailyBudget.ts`. Default: 200 API-costing requests per day, configurable via `DAILY_API_BUDGET` env var. Resets at midnight UTC. In-memory counter means cold starts reset it — acceptable, since it errs on allowing more rather than blocking legitimate users.
+
+The budget only counts actual API calls, not cache hits. The whatsup endpoint checks the budget *after* the cache check, so cached responses flow freely. The followup endpoint checks at the top since every call hits the Claude API.
+
+**The lesson:** Cost protection needs multiple layers. Rate limiting stops individual abuse; budget caps stop distributed abuse. Neither alone is sufficient.
+
+---
+
+## SEO Meta Tags: Social Link Previews
+
+Sharing `cryptowhatsup.cc` on X/Discord/Slack showed a blank preview — no title, no description, just a bare URL. We added Open Graph and Twitter Card meta tags via Next.js Metadata API in `layout.tsx`. Text-only for now (no og:image), but even title + description dramatically improves click-through when shared socially.
+
+---
+
 ## Things I Wish I'd Known Earlier
 
 ### 1. Vercel Hobby Plan Limits

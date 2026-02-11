@@ -33,6 +33,8 @@ Crypto market intelligence app combining real-time prices and AI analysis.
 - `lib/openai.ts` - Market summary generation
 - `lib/coingecko.ts` - Price fetching
 - `lib/grok.ts` - X/Twitter intelligence
+- `lib/rateLimit.ts` - Per-IP rate limiting (10 req/min)
+- `lib/dailyBudget.ts` - Global daily API budget cap
 - `components/WhatsUpDisplay.tsx` - Market overview with interactive follow-up chat
 
 ## First Run Setup
@@ -110,3 +112,6 @@ Required in `.env.local`:
 - `ANTHROPIC_API_KEY`
 - `OPENAI_API_KEY`
 - `XAI_API_KEY` (Grok)
+
+Optional:
+- `DAILY_API_BUDGET` — Max API-costing requests per day (default: 200). Resets at midnight UTC. In-memory counter.
