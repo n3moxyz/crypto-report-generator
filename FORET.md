@@ -211,6 +211,18 @@ if (!grokResponse.themes || grokResponse.themes.length === 0) {
 
 ---
 
+### Bug #4: The twitterapi.io Field Name Mismatch
+
+**The problem:** twitterapi.io returned 429 errors, and even when it worked, follower counts would have been `undefined`.
+
+**The investigation:** The API docs (and Claude's planning) assumed `author.followersCount`, but the actual API response uses `author.followers`. We caught this by curling the API directly and inspecting the response JSON.
+
+**The fix:** Changed the `RawTweet` interface from `followersCount` to `followers` to match the real API response.
+
+**The lesson:** Never trust API documentation (or AI-generated interfaces) without testing against the real response. Always `curl` the endpoint and inspect actual field names before writing your types.
+
+---
+
 ---
 
 ## The Landing Page: First Impressions Matter
@@ -460,10 +472,16 @@ CoinGecko (prices) + Grok (AI interpretation) + twitterapi.io (real tweets)
                     Claude (synthesis + cross-referencing)
 ```
 
-Three parallel search queries fetch ~90 tweets total:
-1. **Regulatory/macro catalysts** — ETF, SEC, Fed mentions with 50+ likes
-2. **Price action discussion** — rally, dump, breakout talk with 100+ likes
-3. **Credible accounts** — the same analysts Grok's prompt references (lookonchain, EmberCN, whale_alert, etc.)
+Four parallel search queries pull exclusively from **71 trusted accounts** — the same credible source list in Grok's prompt (`lib/grok.ts`). No keyword-based queries, no random accounts, no spam:
+
+| Query | Accounts | Focus |
+|-------|----------|-------|
+| 1 | NEWS + DATA (18) | lookonchain, whale_alert, DeItaone, CoinDesk, glassnode, etc. |
+| 2 | ANALYSTS + TRADERS (15) | CryptoHayes, HsakaTrades, milesdeutscher, etc. |
+| 3 | TRADERS + MACRO (17) | Pentosh1, MacroAlf, RaoulGMI, LynAldenContact, etc. |
+| 4 | FOUNDERS + CT (21) | VitalikButerin, cobie, brian_armstrong, etc. |
+
+We initially tried keyword-based queries (e.g. "crypto ETF SEC" with `min_faves:50`) but these surfaced spam and scam accounts. Switching to account-based queries ensures every tweet comes from a vetted source. The account list is maintained in one place (`lib/twitter-api.ts`) mirroring Grok's prompt.
 
 Tweets are deduplicated, filtered (min 30 chars, within 48h), scored by engagement + follower tier, and the top 15 are sent to Claude as a `RAW VERIFIED TWEETS` section.
 
@@ -485,7 +503,7 @@ Claude's system prompt now includes instructions to:
 
 ### Cost & Performance
 
-- **Cost**: $0.014 per call (3 searches), ~$1.30/day worst case at 200 requests/day
+- **Cost**: $0.056 per call (4 searches), ~$11.20/day worst case at 200 requests/day
 - **Latency**: 1-3s, well under Grok's 5-15s — zero impact on total response time
 - **Graceful degradation**: No API key? Returns empty. Timeout? Returns empty. Individual query fails? `Promise.allSettled` keeps the others.
 
