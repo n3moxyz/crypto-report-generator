@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { checkDailyBudget, incrementDailyBudget } from "@/lib/dailyBudget";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 
@@ -54,6 +56,32 @@ export interface FollowUpRequest {
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 requests/min per IP
+  const rateLimitResult = checkRateLimit(request);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too many requests. Please try again later.",
+        retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000),
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)),
+        },
+      }
+    );
+  }
+
+  // Daily budget cap
+  const budgetResult = checkDailyBudget();
+  if (!budgetResult.allowed) {
+    return NextResponse.json(
+      { error: "Daily API budget exceeded. Please try again tomorrow." },
+      { status: 429 }
+    );
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
@@ -154,6 +182,8 @@ USER QUESTION: ${question}`;
     if (!data.content || !data.content[0] || !data.content[0].text) {
       throw new Error("Invalid response from Claude API");
     }
+
+    incrementDailyBudget();
 
     return NextResponse.json({
       answer: data.content[0].text,

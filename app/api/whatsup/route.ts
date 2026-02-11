@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateWhatsUp } from "@/lib/openai";
 import { getCachedWhatsUp, setCachedWhatsUp, getCacheAge } from "@/lib/cache";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { checkDailyBudget, incrementDailyBudget } from "@/lib/dailyBudget";
 
 // Cooldown for force-refresh: 10 minutes per IP
 const REFRESH_COOLDOWN_MS = 10 * 60 * 1000;
@@ -77,7 +78,16 @@ export async function GET(request: NextRequest) {
     }
 
     // No valid cache or force refresh — generate fresh data
+    const budgetResult = checkDailyBudget();
+    if (!budgetResult.allowed) {
+      return NextResponse.json(
+        { error: "Daily API budget exceeded. Please try again tomorrow." },
+        { status: 429 }
+      );
+    }
+
     const data = await generateWhatsUp();
+    incrementDailyBudget();
 
     // Cache the result
     await setCachedWhatsUp(data);

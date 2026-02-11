@@ -14,8 +14,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://cryptowhatsup.cc"),
   title: "Crypto - What's Up?",
-  description: "Liquid markets update with one click",
+  description: "AI-powered crypto market intelligence. Get real-time prices, sentiment analysis, and market insights with one click.",
+  openGraph: {
+    title: "Crypto - What's Up?",
+    description: "AI-powered crypto market intelligence. Real-time prices, sentiment analysis, and market insights.",
+    url: "https://cryptowhatsup.cc",
+    siteName: "Crypto What's Up",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Crypto - What's Up?",
+    description: "AI-powered crypto market intelligence. Real-time prices, sentiment analysis, and market insights.",
+  },
   other: {
     "color-scheme": "light dark",
   },
