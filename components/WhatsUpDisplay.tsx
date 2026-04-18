@@ -496,6 +496,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
 
                 {/* Expand button - subtle, integrated, and italic */}
                 <button
+                  type="button"
                   onClick={() => handleBulletClick(index)}
                   className="ml-6 mt-2 flex items-center gap-1.5 transition-all duration-200 italic"
                   style={{
@@ -572,6 +573,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
           </span>
           {chatMessages.length > 0 && (
             <button
+              type="button"
               onClick={() => setChatMessages([])}
               className="text-muted hover:text-secondary transition-colors"
               style={{ fontSize: "var(--text-xs)" }}
@@ -682,6 +684,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
             ].map((suggestion) => (
               <button
                 key={suggestion}
+                type="button"
                 onClick={() => setChatInput(suggestion)}
                 className="px-3 py-1.5 rounded-md text-muted hover:text-secondary hover:bg-[var(--bg-secondary)] transition-colors"
                 style={{ fontSize: "var(--text-xs)", border: "1px solid var(--border-color)" }}

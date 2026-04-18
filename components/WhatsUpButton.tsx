@@ -4,11 +4,15 @@ interface WhatsUpButtonProps {
 }
 
 export default function WhatsUpButton({ onClick, isLoading }: WhatsUpButtonProps) {
+  const buttonLabel = isLoading ? "Loading market summary" : "Generate market summary";
+
   return (
     <button
       onClick={onClick}
       disabled={isLoading}
       className="btn btn-primary"
+      aria-label={buttonLabel}
+      aria-busy={isLoading}
     >
       {isLoading ? (
         <>
