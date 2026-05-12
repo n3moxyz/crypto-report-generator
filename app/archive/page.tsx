@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
@@ -11,9 +11,27 @@ interface ArchiveEntry {
   images: string[];
 }
 
-function formatContent(text: string): string {
-  // Replace *text* with <strong>text</strong> (Telegram bold markdown)
-  return text.replace(/\*([^*]+)\*/g, "<strong>$1</strong>");
+function formatContent(text: string): ReactNode[] {
+  // Render Telegram-style bold markers without injecting HTML.
+  const nodes: ReactNode[] = [];
+  const pattern = /\*([^*]+)\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    nodes.push(<strong key={`bold-${match.index}`}>{match[1]}</strong>);
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
 }
 
 export default function ArchivePage() {
@@ -309,10 +327,9 @@ export default function ArchivePage() {
                     lineHeight: 1.7,
                     whiteSpace: "pre-wrap",
                   }}
-                  dangerouslySetInnerHTML={{
-                    __html: formatContent(entry.content),
-                  }}
-                />
+                >
+                  {formatContent(entry.content)}
+                </div>
 
                 {/* Images — pass password via fetch, render as blob URLs */}
                 {entry.images.length > 0 && (

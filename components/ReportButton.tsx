@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
 interface ReportButtonProps {
-  onClick: () => void;
+  onClick: (password: string) => void;
   isLoading: boolean;
-  onAuthenticated?: () => void;
+  onAuthenticated?: (password: string) => void;
 }
 
 export default function ReportButton({ onClick, isLoading, onAuthenticated }: ReportButtonProps) {
@@ -44,10 +44,11 @@ export default function ReportButton({ onClick, isLoading, onAuthenticated }: Re
       });
 
       if (response.ok) {
+        const submittedPassword = password;
         setShowPasswordModal(false);
         setPassword("");
-        onAuthenticated?.();
-        onClick();
+        onAuthenticated?.(submittedPassword);
+        onClick(submittedPassword);
       } else {
         const data = await response.json();
         setError(data.error || "Incorrect password");

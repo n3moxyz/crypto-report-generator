@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { deriveSentimentFromConclusion } from "@/lib/sentimentStorage";
 
 const ESTIMATED_TIME = 45; // Estimated seconds for market summary
@@ -68,24 +68,53 @@ interface WhatsUpDisplayProps {
 // Does NOT match: "$891k inflows", "$10 billion", "absorbed $345M"
 const TICKER_PRICE_PATTERN = /\b(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|DOT|MATIC|AVAX|LINK|UNI|ATOM|LTC|BCH|XLM|ALGO|VET|FIL|THETA|ICP|TRX|ETC|XMR|AAVE|GRT|MKR|SNX|COMP|YFI|SUSHI|CRV|BAL|REN|KNC|LRC|ZRX|ENJ|MANA|SAND|AXS|CHZ|GALA|IMX|APE|OP|ARB|BLUR|PEPE|WLD|SUI|SEI|TIA|JUP|STRK|PENDLE|Bitcoin|Ethereum|Solana)(?:\s*[:@]?\s*|\s+at\s+)(\$[\d,.]+k?)\b/gi;
 
-// Helper to format text with crypto prices (purple) - ONLY when preceded by ticker
-const formatText = (text: string) => {
-  let formatted = text;
+// Helper to format text with crypto prices (purple) - ONLY when preceded by ticker.
+// Returns React nodes instead of HTML strings, so AI output is escaped by default.
+const formatText = (text: string): ReactNode[] => {
+  const cleaned = text.replace(/\*([^*]+)\*/g, '$1');
+  const nodes: ReactNode[] = [];
 
   // Reset lastIndex since we're reusing a global regex
   TICKER_PRICE_PATTERN.lastIndex = 0;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
 
-  formatted = formatted.replace(TICKER_PRICE_PATTERN, (match, ticker, price) => {
-    return `${ticker} <span style="color: #a78bfa; font-weight: 500;">${price}</span>`;
-  });
+  while ((match = TICKER_PRICE_PATTERN.exec(cleaned)) !== null) {
+    const [matchedText, , price] = match;
+    const priceIndex = matchedText.lastIndexOf(price);
+    const beforePrice = matchedText.slice(0, priceIndex);
 
-  // Handle *italic* markers - just remove the asterisks and keep the text
-  formatted = formatted.replace(
-    /\*([^*]+)\*/g,
-    '$1'
-  );
+    if (match.index > lastIndex) {
+      nodes.push(cleaned.slice(lastIndex, match.index));
+    }
 
-  return formatted;
+    nodes.push(beforePrice);
+    nodes.push(
+      <span key={`price-${match.index}`} style={{ color: "#a78bfa", fontWeight: 500 }}>
+        {price}
+      </span>
+    );
+
+    lastIndex = match.index + matchedText.length;
+  }
+
+  if (lastIndex < cleaned.length) {
+    nodes.push(cleaned.slice(lastIndex));
+  }
+
+  return nodes;
+};
+
+const safeExternalUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? parsed.toString()
+      : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 // Normalize bullets to always be BulletPoint[]
@@ -437,6 +466,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
             const isExpanded = expandedBullets.has(index);
             const elaboration = preloadedElaborations[index];
             const hasElaboration = !!elaboration;
+            const bulletSourceUrl = safeExternalUrl(bullet.sourceUrl);
 
             return (
               <li key={index}>
@@ -447,10 +477,10 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
                 >
                   <span className="text-accent flex-shrink-0" style={{ lineHeight: 1.6 }}>•</span>
                   <span>
-                    <span dangerouslySetInnerHTML={{ __html: formatText(bullet.main) }} />
-                    {bullet.sourceUrl && (
+                    <span>{formatText(bullet.main)}</span>
+                    {bulletSourceUrl && (
                       <a
-                        href={bullet.sourceUrl}
+                        href={bulletSourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-accent hover:underline ml-1"
@@ -467,6 +497,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
                   <ul className="ml-6 mt-1.5 space-y-1">
                     {bullet.subPoints.map((sub, subIndex) => {
                       const { text, sourceUrl } = normalizeSubPoint(sub);
+                      const safeSourceUrl = safeExternalUrl(sourceUrl);
                       return (
                         <li
                           key={subIndex}
@@ -475,10 +506,10 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
                         >
                           <span className="text-muted flex-shrink-0" style={{ lineHeight: 1.5 }}>→</span>
                           <span>
-                            <span dangerouslySetInnerHTML={{ __html: formatText(text) }} />
-                            {sourceUrl && (
+                            <span>{formatText(text)}</span>
+                            {safeSourceUrl && (
                               <a
-                                href={sourceUrl}
+                                href={safeSourceUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-accent hover:underline ml-1"
@@ -559,7 +590,7 @@ export default function WhatsUpDisplay({ data, isLoading }: WhatsUpDisplayProps)
             style={{ fontSize: "var(--text-sm)", lineHeight: 1.6 }}
           >
             <span className="text-primary font-semibold">Bias: </span>
-            <span className="italic" dangerouslySetInnerHTML={{ __html: formatText(data.conclusion) }} />
+            <span className="italic">{formatText(data.conclusion)}</span>
           </p>
         </div>
       )}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateReport } from "@/lib/claude";
 import { CoinData } from "@/lib/coingecko";
 import { promises as fs } from "fs";
+import { timingSafeEqual } from "crypto";
 import path from "path";
 
 function parseDateFromFilename(filename: string): Date | null {
@@ -67,8 +68,38 @@ async function loadSampleReports(): Promise<{ samples: string[]; mostRecent: str
   }
 }
 
+function secureCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a.padEnd(256, "\0"));
+  const bufB = Buffer.from(b.padEnd(256, "\0"));
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+}
+
+function verifyReportPassword(request: NextRequest): NextResponse | null {
+  const reportPassword = process.env.REPORT_PASSWORD;
+
+  if (!reportPassword) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "REPORT_PASSWORD is not configured" },
+        { status: 500 }
+      );
+    }
+    return null;
+  }
+
+  const providedPassword = request.headers.get("x-report-password") || "";
+  if (!secureCompare(providedPassword, reportPassword)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const authError = verifyReportPassword(request);
+    if (authError) return authError;
+
     const body = await request.json();
     const { prices } = body as { prices: CoinData[] };
 

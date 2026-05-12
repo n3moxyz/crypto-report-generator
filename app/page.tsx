@@ -89,6 +89,7 @@ export default function Home() {
   const [hasWhatsUp, setHasWhatsUp] = useState(false);
   const [hasReport, setHasReport] = useState(false);
   const [isReportAuthenticated, setIsReportAuthenticated] = useState(false);
+  const [reportPassword, setReportPassword] = useState("");
   const [isMarketSummaryCollapsed, setIsMarketSummaryCollapsed] = useState(false);
   const [isReportCollapsed, setIsReportCollapsed] = useState(false);
   const [isEthBtcCollapsed, setIsEthBtcCollapsed] = useState(true);
@@ -226,6 +227,7 @@ export default function Home() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              ...(reportPassword ? { "x-report-password": reportPassword } : {}),
             },
             body: JSON.stringify({ prices: pricesData.coins }),
           });
@@ -352,7 +354,7 @@ export default function Home() {
     }
   };
 
-  const generateReport = async () => {
+  const generateReport = async (password: string) => {
     setIsLoading(true);
     setError("");
     setReport("");
@@ -376,6 +378,7 @@ export default function Home() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-report-password": password,
         },
         body: JSON.stringify({ prices: data.coins }),
       });
@@ -505,7 +508,14 @@ export default function Home() {
               </div>
               {isAdmin && (
                 <div className="hidden sm:block" style={{ opacity: 0.5 }}>
-                  <ReportButton onClick={generateReport} isLoading={isLoading} onAuthenticated={() => setIsReportAuthenticated(true)} />
+                  <ReportButton
+                    onClick={generateReport}
+                    isLoading={isLoading}
+                    onAuthenticated={(password) => {
+                      setReportPassword(password);
+                      setIsReportAuthenticated(true);
+                    }}
+                  />
                 </div>
               )}
             </div>

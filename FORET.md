@@ -355,12 +355,7 @@ The rule: if a piece of UI belongs to a different *data lifecycle* than its pare
 
 ### 1. Environment Variables: Keep Secrets Secret
 
-We use `.env.local` for all sensitive data:
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-XAI_API_KEY=xai-...
-ADMIN_BYPASS_TOKEN=...
-```
+We use `.env.local` for all sensitive data, including model provider keys and any admin bypass tokens. Public docs should name required variables, but should not show real-looking secret values.
 
 The bypass token lets us test without rate limits. Never commit these.
 
@@ -600,6 +595,28 @@ cp .env.example .env.local
 # Run development server
 npm run dev
 ```
+
+---
+
+## Bugs We Fought
+
+### Vendor Incident Response — Rotate Spend-Capable API Keys First
+
+**What happened:** A third-party vendor incident raised the possibility that deployment environment metadata, and potentially some secret values, may have been exposed. This project did not depend on the compromised vendor directly, but any secret that may have flowed through affected deployment infrastructure deserved review.
+
+**Why the AI keys mattered most:** API keys that can spend money are the highest-priority rotation targets. App-level passwords and bypass tokens still matter, but their blast radius is smaller than a stolen model-provider key that can run workloads against your bill.
+
+**The rotation pattern:** Create a replacement key at the provider, update the deployment environment, redeploy so the runtime uses the new value, verify the paid path works, then revoke the old key. Redeploy is not optional: changing a dashboard value does not necessarily update the currently served deployment.
+
+**Public-repo note:** Keep exact account-audit results, vendor console details, token inventories, and project-by-project incident findings in private ops notes. Public docs should preserve the reusable lesson, not the sensitive inventory.
+
+### Public Release Hardening — Server Gates Beat Hidden UI
+
+**The issue:** Internal features were hidden behind an admin-mode shortcut and client-side password prompt, but the paid report endpoint still accepted direct POST requests. A public repo makes endpoint discovery trivial, so hidden UI is not a security boundary.
+
+**The fix:** `/api/generate` now requires `REPORT_PASSWORD` server-side before spending model budget, the cron refresh route fails closed in production if `CRON_SECRET` is missing, and formatted AI/archive output renders through React text nodes instead of raw HTML injection.
+
+**The pattern:** Anything that spends money, changes state, or exposes private content needs enforcement on the API route itself. Client gates are only UX.
 
 ---
 
