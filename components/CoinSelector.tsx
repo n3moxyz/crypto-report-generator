@@ -102,6 +102,7 @@ export default function CoinSelector({
             <span className="text-muted">{selectedCoins.length} of {maxSelection} selected</span>
             {selectedCoins.length > 0 && (
               <button
+                type="button"
                 onClick={() => onSelectionChange([])}
                 className="text-accent hover:underline"
                 style={{ fontSize: "var(--text-xs)" }}
@@ -121,8 +122,10 @@ export default function CoinSelector({
               return (
                 <button
                   key={coin.id}
+                  type="button"
                   onClick={() => !isDisabled && toggleCoin(coin.id)}
                   disabled={isDisabled}
+                  aria-pressed={isSelected}
                   className={`w-full px-3 py-2 flex items-center gap-2 text-left transition-colors ${
                     isDisabled ? "opacity-40 cursor-not-allowed" : "hover:bg-tertiary cursor-pointer"
                   } ${isSelected ? "bg-tertiary" : ""}`}
